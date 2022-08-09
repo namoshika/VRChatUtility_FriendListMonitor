@@ -1,0 +1,51 @@
+2012.01.23 01:23:45 Warning    -  OvrLipSync Awake: Queried SampleRate: 48000 BufferSize: 1024
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] User Authenticated: 認証ユーザ1
+- hasEmail: True
+- hasBirthday: True
+- tos: x
+- avatar: avtr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] Entering Room: ワールド名
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] Joining wrld_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:99999~private(usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)~region(jp)~nonce(XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX)
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] OnPlayerJoined ユーザ名
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] OnPlayerLeft ユーザ名
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] OnPlayerJoined ユーザ名
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] OnPlayerLeft ユーザ名
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] OnPlayerJoined ユーザ名
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] OnPlayerLeft ユーザ名
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] OnPlayerJoined ユーザ名
+
+
+
+2012.01.23 01:23:45 Log        -  [Behaviour] OnPlayerLeft ユーザ名
+
+

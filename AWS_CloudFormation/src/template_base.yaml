@@ -1,0 +1,387 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  EnvType: { Type: String, AllowedValues: [prd, dev] }
+  TempS3Bucket: { Type: String }
+  TempS3Prefix: { Type: String }
+  AppRepoUrl: { Type: String }
+  AppRepoArn: { Type: String }
+  AppRepoName: { Type: String }
+  AppRepoRef: { Type: String }
+
+Resources:
+  IamPolicyAppExec:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub vrcu-${EnvType}-appexec-policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:GetParametersByPath
+            Resource: arn:aws:ssm:*:*:parameter/vrcu/*
+
+  IamPolicyLogging:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub vrcu-${EnvType}-logger-policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Resource: "*"
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+          - Effect: Allow
+            Resource:
+              - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/vrcu-${EnvType}-*:log-stream:*
+              - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:log-stream:*
+              - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/vrcu/${EnvType}/buildpipeline:log-stream:*
+            Action:
+              - logs:PutLogEvents
+
+  IamRoleAppLambda:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub vrcu-${EnvType}-FriendListMonitor-lambda-role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal: { Service: lambda.amazonaws.com }
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
+        - arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess
+        - !Ref IamPolicyAppExec
+        - !Ref IamPolicyLogging
+      Policies:
+        - PolicyName: !Sub vrcu-${EnvType}-FriendListMonitor-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Resource: !GetAtt DynamoDbApp.Arn
+                Action:
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:PutItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:PartiQLUpdate
+                  - dynamodb:PartiQLInsert
+                  - dynamodb:UpdateItem
+                  - dynamodb:PartiQLDelete
+              - Effect: Allow
+                Resource:
+                  - !GetAtt SqsFriendListMonitorWorker.Arn
+                  - !GetAtt SqsFriendListProcesser.Arn
+                Action:
+                  - sqs:GetQueueUrl
+                  - sqs:SendMessage
+                  - sqs:DeleteMessage
+
+  IamRoleBuildLambda:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub vrcu-${EnvType}-BuildPipeline-lambda-role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal: { Service: lambda.amazonaws.com }
+      ManagedPolicyArns:
+        - !Ref IamPolicyAppExec
+        - !Ref IamPolicyLogging
+      Policies:
+        - PolicyName: !Sub vrcu-${EnvType}-BuildPipeline-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - { Effect: Allow, Action: codebuild:*, Resource: "*" }
+              - { Effect: Allow, Action: codecommit:GetDifferences, Resource: !Ref AppRepoArn }
+
+  IamRoleCodeBuild:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub vrcu-${EnvType}-FriendListMonitor-codebuild-role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal: { Service: codebuild.amazonaws.com }
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+        - !Ref IamPolicyAppExec
+        - !Ref IamPolicyLogging
+      Policies:
+        - PolicyName: !Sub vrcu-${EnvType}-FriendListMonitor-codebuild-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Resource:
+                  - arn:aws:s3:::codepipeline-*-*/*
+                  - !Sub arn:${AWS::Partition}:s3:::${TempS3Bucket}/${TempS3Prefix}/*
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+              - Effect: Allow
+                Resource: arn:aws:codecommit:*:*:VRChatUtility_FriendListMonitor
+                Action:
+                  - codecommit:GitPull
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
+              - { Effect: Allow, Action: codebuild:*, Resource: "*" }
+              - { Effect: Allow, Action: events:*, Resource: "*" }
+              - { Effect: Allow, Action: lambda:*, Resource: "*" }
+
+  CodeBuildFriendListMonitorDispatcher:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub vrcu-${EnvType}-FriendListMonitor-Dispatcher-codebuild
+      ServiceRole: !GetAtt IamRoleCodeBuild.Arn
+      ResourceAccessRole: !GetAtt IamRoleCodeBuild.Arn
+      TimeoutInMinutes: 10
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - { Name: ENV_TYPE, Type: PLAINTEXT, Value: !Ref EnvType }
+          - { Name: STACK_NAME, Type: PLAINTEXT, Value: !Sub "vrcu-${EnvType}-FriendListMonitor-Dispatcher" }
+      Source:
+        Type: CODECOMMIT
+        Location: !Ref AppRepoUrl
+        BuildSpec: AWS_Lambda/FriendListMonitor_Dispatcher/buildspec.yml
+        GitCloneDepth: 1
+      SourceVersion: refs/heads/master
+      Artifacts: { Type: NO_ARTIFACTS }
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Sub /vrcu/${EnvType}/buildpipeline
+          StreamName: FriendListMonitor-Dispatcher
+
+  CodeBuildFriendListMonitorWorker:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub vrcu-${EnvType}-FriendListMonitor-Worker-codebuild
+      ServiceRole: !GetAtt IamRoleCodeBuild.Arn
+      ResourceAccessRole: !GetAtt IamRoleCodeBuild.Arn
+      TimeoutInMinutes: 10
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - { Name: ENV_TYPE, Type: PLAINTEXT, Value: !Ref EnvType }
+          - { Name: STACK_NAME, Type: PLAINTEXT, Value: !Sub "vrcu-${EnvType}-FriendListMonitor-Worker" }
+      Source:
+        Type: CODECOMMIT
+        Location: !Ref AppRepoUrl
+        BuildSpec: AWS_Lambda/FriendListMonitor_Worker/buildspec.yml
+        GitCloneDepth: 1
+      SourceVersion: refs/heads/master
+      Artifacts: { Type: NO_ARTIFACTS }
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Sub /vrcu/${EnvType}/buildpipeline
+          StreamName: FriendListMonitor-Worker
+
+  EventRuleBuildPipeline:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub vrcu-${EnvType}-BuildPipeline-eventrule
+      State: ENABLED
+      EventPattern:
+        source: [aws.codecommit]
+        detail-type: [CodeCommit Repository State Change]
+        resources: [!Ref AppRepoArn]
+        detail:
+          event: [referenceUpdated]
+      Targets: 
+        - Id: InvokeBuildPipeline
+          Arn: !GetAtt LambdaBuildPipeline.Arn
+
+  DynamoDbApp:
+    Type: AWS::DynamoDB::Table
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      TableName: !Sub vrcu-${EnvType}-FriendListMonitor-dynamodb
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      BillingMode: PROVISIONED
+      TableClass: STANDARD
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+        Enabled: true
+        AttributeName: expiration_time
+      Tags:
+        - { Key: Service, Value: VRChatUtility }
+
+  LambdaBuildPipeline:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub vrcu-${EnvType}-BuildPipeline-lambda
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Timeout: 120
+      CodeUri: ../../AWS_Lambda/BuildPipeline_Invoker/src/
+      Role: !GetAtt IamRoleBuildLambda.Arn
+      Environment:
+        Variables:
+          ENV_TYPE: !Ref EnvType
+          APP_REPOSITORY_NAME: !Ref AppRepoName
+          APP_REPOSITORY_REF: !Ref AppRepoRef
+
+  LambdaBuildPipelinePolicy:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref LambdaBuildPipeline
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventRuleBuildPipeline.Arn
+
+  ParamAppLambdaRole:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/role-exec-lambda
+      Type: String
+      Value: !GetAtt IamRoleAppLambda.Arn
+
+  ParamCodeBuildPathMapping01:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/build-project-mapping/vrcu-${EnvType}-FriendListMonitor-Dispatcher-codebuild
+      Type: String
+      Value: AWS_Lambda/FriendListMonitor_Dispatcher/
+
+  ParamCodeBuildPathMapping02:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/build-project-mapping/vrcu-${EnvType}-FriendListMonitor-Worker-codebuild
+      Type: String
+      Value: AWS_Lambda/FriendListMonitor_Worker/
+
+  ParamDynamoDbAppTable:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/dynamodb-appdb
+      Type: String
+      Value: !Ref DynamoDbApp
+
+  ParamS3TmpBucket:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /vrcu/s3-bucket
+      Type: String
+      Value: !Ref TempS3Bucket
+
+  ParamS3TmpPrefix:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /vrcu/s3-prefix
+      Type: String
+      Value: !Ref TempS3Prefix
+
+  ParamSqsWorker:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/sqs-worker
+      Type: String
+      Value: !GetAtt SqsFriendListMonitorWorker.QueueName
+
+  ParamSqsWorkerArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/sqs-worker-arn
+      Type: String
+      Value: !GetAtt SqsFriendListMonitorWorker.Arn
+
+  ParamSqsProcesser:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/sqs-processer
+      Type: String
+      Value: !GetAtt SqsFriendListProcesser.QueueName
+
+  ParamSqsProcesserArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/sqs-processer-arn
+      Type: String
+      Value: !GetAtt SqsFriendListProcesser.Arn
+
+  SqsFriendListMonitorWorker:
+    Type: AWS::SQS::Queue
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      QueueName: !Sub vrcu-${EnvType}-FriendListMonitor_Worker-sqs
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600
+
+  SqsFriendListMonitorWorkerPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Id: Policy1661786687182
+        Statement:
+          - Sid: Stmt1661786681160
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:ReceiveMessage
+              - sqs:SendMessage
+            Resource: !GetAtt SqsFriendListMonitorWorker.Arn
+      Queues:
+        - !Ref SqsFriendListMonitorWorker
+
+  SqsFriendListProcesser:
+    Type: AWS::SQS::Queue
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      QueueName: !Sub vrcu-${EnvType}-FriendListProcesser-sqs
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600
+
+  SqsFriendListProcesserPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Id: Policy1661786687182
+        Statement:
+          - Sid: Stmt1661786681160
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:ReceiveMessage
+              - sqs:SendMessage
+            Resource: !GetAtt SqsFriendListProcesser.Arn
+      Queues:
+        - !Ref SqsFriendListProcesser

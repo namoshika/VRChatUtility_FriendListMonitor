@@ -1,0 +1,29 @@
+{
+  "log_01.txt": {
+    "_type": "LogParserStatus",
+    "AuthUserDisplayName": "hoge",
+    "CurrentInstanceId": "99999",
+    "CurrentWorldId": "wrld_xxx",
+    "CurrentWorldName": "ワールド名",
+    "Pos": 123,
+    "VisitedWorldCount": 1
+  },
+  "log_02.txt": {
+    "_type": "LogParserStatus",
+    "AuthUserDisplayName": "hoge",
+    "CurrentInstanceId": "99999",
+    "CurrentWorldId": "wrld_xxx",
+    "CurrentWorldName": "ワールド名",
+    "Pos": 123,
+    "VisitedWorldCount": 1
+  },
+  "log_03.txt": {
+    "_type": "LogParserStatus",
+    "AuthUserDisplayName": "hoge",
+    "CurrentInstanceId": "99999",
+    "CurrentWorldId": "wrld_xxx",
+    "CurrentWorldName": "ワールド名",
+    "Pos": 123,
+    "VisitedWorldCount": 1
+  }
+}

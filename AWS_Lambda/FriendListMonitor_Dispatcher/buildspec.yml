@@ -1,0 +1,18 @@
+version: 0.2
+
+env:
+  parameter-store:
+    LAMBDA_ROLE: /vrcu/${ENV_TYPE}/role-exec-lambda
+    APP_TABLE_NAME: /vrcu/${ENV_TYPE}/dynamodb-appdb
+    WORKER_QUEUE: /vrcu/${ENV_TYPE}/sqs-worker
+    TMP_S3_BUCKET: /vrcu/s3-bucket
+    TMP_S3_PREFIX: /vrcu/s3-prefix
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+  build:
+    commands:
+      - aws cloudformation package --template-file AWS_Lambda/FriendListMonitor_Dispatcher/cloudformation.yml --s3-bucket $TMP_S3_BUCKET --s3-prefix $TMP_S3_PREFIX --output-template-file AWS_Lambda/FriendListMonitor_Dispatcher/cloudformation_packaged.yml
+      - aws cloudformation deploy --template-file AWS_Lambda/FriendListMonitor_Dispatcher/cloudformation_packaged.yml --stack-name $STACK_NAME --parameter-overrides LambdaFunctionRole=$(eval echo $LAMBDA_ROLE) EnvType=$ENV_TYPE AppTableName=$(eval echo $APP_TABLE_NAME) WorkerQueue=$(eval echo $WORKER_QUEUE)
