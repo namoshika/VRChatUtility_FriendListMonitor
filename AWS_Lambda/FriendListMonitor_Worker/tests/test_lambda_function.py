@@ -1,5 +1,9 @@
 import json
+import sys
 import os
+
+# テスト対象
+sys.path.append("src")
 import src.lambda_function
 
 
