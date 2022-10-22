@@ -1,4 +1,5 @@
 import boto3
+import dataclasses
 import datetime
 import json
 import logging
@@ -8,7 +9,6 @@ import time
 import traceback
 from argparse import ArgumentParser
 from configparser import ConfigParser
-from dataclasses import dataclass
 from enum import Enum, auto
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -47,20 +47,20 @@ class VRChatLogErrorType(Enum):
     LogBufferOverflow = auto()
 
 
-@dataclass
+@dataclasses.dataclass
 class LogEvent:
     Type: LogEventType
     Timestamp: datetime.datetime
 
 
-@dataclass
+@dataclasses.dataclass
 class LogEventEnterWorld(LogEvent):
     InstanceId: str
     WorldId: str
     WorldName: str
 
 
-@dataclass
+@dataclasses.dataclass
 class LogEventLeftWorld(LogEvent):
     Type = LogEventType.LeftWorld
     InstanceId: str
@@ -68,7 +68,7 @@ class LogEventLeftWorld(LogEvent):
     WorldName: str
 
 
-@dataclass
+@dataclasses.dataclass
 class LogEventEnterPlayer(LogEvent):
     Type = LogEventType.EnterPlayer
     InstanceId: str
@@ -77,7 +77,7 @@ class LogEventEnterPlayer(LogEvent):
     UserDisplayName: str
 
 
-@dataclass
+@dataclasses.dataclass
 class LogEventLeftPlayer(LogEvent):
     Type = LogEventType.LeftPlayer
     InstanceId: str
@@ -86,7 +86,7 @@ class LogEventLeftPlayer(LogEvent):
     UserDisplayName: str
 
 
-@dataclass
+@dataclasses.dataclass
 class LogEventInitializedApi(LogEvent):
     Type = LogEventType.InitializedApi
     InstanceId: str
@@ -96,7 +96,7 @@ class LogEventInitializedApi(LogEvent):
     Mode: str
 
 
-@dataclass
+@dataclasses.dataclass
 class LogParserStatus:
     Pos: int
     VisitedWorldCount: int
@@ -104,6 +104,14 @@ class LogParserStatus:
     CurrentWorldId: str
     CurrentWorldName: str
     CurrentInstanceId: str
+
+    def update(self, new_value) -> None:
+        self.Pos = new_value.Pos
+        self.VisitedWorldCount = new_value.VisitedWorldCount
+        self.AuthUserDisplayName = new_value.AuthUserDisplayName
+        self.CurrentWorldId = new_value.CurrentWorldId
+        self.CurrentWorldName = new_value.CurrentWorldName
+        self.CurrentInstanceId = new_value.CurrentInstanceId
 
 
 class VRChatLogError(Exception):
@@ -135,19 +143,12 @@ class VRChatResource:
                     yield log_item
             except FileNotFoundError as ex:
                 # 処理中にファイルが消去された場合は読み込みをスキップ
-                msg = f"ログ (\"{log._logfile_path}\") の解析がスキップされました. ファイルが見つかりません.\n{self.get_stacktrace()}\n"
-                logger.warn(msg)
+                msg = f"ログ (\"{log._logfile_path}\") の解析がスキップされました. ファイルが見つかりません.\n{get_stacktrace()}\n"
+                logger.warning(msg)
             except Exception as ex:
-                msg = f"ログ (\"{log._logfile_path}\") の解析が中断されました. 予期しない例外がスローされています.\n{self.get_stacktrace()}\n"
+                msg = f"ログ (\"{log._logfile_path}\") の解析が中断されました. 予期しない例外がスローされています.\n{get_stacktrace()}\n"
                 logger.error(msg)
                 raise
-
-    @staticmethod
-    def get_stacktrace() -> str:
-        t, v, tb = sys.exc_info()
-        stacktrace = "".join(traceback.format_exception(t, v, tb))
-        return stacktrace
-
 
 class VRChatLogReader:
     LOG_BUFFER_SIZE = 102_400
@@ -185,37 +186,42 @@ class VRChatLogReader:
             logger.info(f"ログ (\"{str(self._logfile_path)}\") の解析を開始.")
             log_stream = self._logfile_path.open(mode="r", encoding="utf8", errors="replace")
             log_stream.seek(file_pos)
-            for pos, activity in self.read_log(log_stream, self._is_read_lastlog, self._target_user, file_pos, self._status):
-                if self._status.AuthUserDisplayName != self._target_user:
-                    if pos >= self.LOG_BUFFER_SIZE:
+            status = dataclasses.replace(self._status)
+            for activity in self.read_log(log_stream, self._is_read_lastlog, self._target_user, status):
+                if status.AuthUserDisplayName != self._target_user:
+                    if status.Pos >= self.LOG_BUFFER_SIZE:
                         raise VRChatLogError(
                             VRChatLogErrorType.LogBufferOverflow,
                             f"ログ生成時のログインユーザを特定できませんでした (Over {self.LOG_BUFFER_SIZE} Bytes)"
                         )
-                    self._log_buff.append((pos, activity))
+                    self._log_buff.append((dataclasses.replace(status), activity))
                 else:
                     if len(self._log_buff) > 0:
-                        self._log_buff.append((pos, activity))
-                        for buff_pos, buff_activity in self._log_buff:
-                            self._status.Pos = buff_pos
+                        self._log_buff.append((status, activity))
+                        for buff_status, buff_activity in self._log_buff:
+                            self._status.update(buff_status)
                             yield buff_activity
                         self._log_buff.clear()
                     else:
-                        self._status.Pos = pos
+                        self._status.update(status)
                         yield activity
 
             if len(self._log_buff) > 0:
                 raise VRChatLogError(
-                    VRChatLogErrorType.LogBufferOverflow,
-                    "ログ生成時のログインユーザを特定できませんでした")
+                    VRChatLogErrorType.LogBufferOverflow, "ログ生成時のログインユーザを特定できませんでした")
 
         except VRChatLogError as ex:
+            self._status.update(status)
             if ex.reason == VRChatLogErrorType.MissMatchAuthUser:
+                return
+            if ex.reason == VRChatLogErrorType.LogBufferOverflow:
+                msg = f"ログ (\"{str(self._logfile_path)}\") の解析がスキップされました. ログインユーザが不明です.\n{get_stacktrace()}\n"
+                logger.warning(msg)
                 return
             raise
 
     @staticmethod
-    def read_log(log_stream, is_read_lastlog: bool, target_user: str, pos: int, status: LogParserStatus) -> Iterable[Tuple[int, str]]:
+    def read_log(log_stream, is_read_lastlog: bool, target_user: str, status: LogParserStatus) -> Iterable[Tuple[int, str]]:
         buffer = ""
         for line in log_stream:
             buffer += line
@@ -224,20 +230,18 @@ class VRChatLogReader:
                 start_pos = match_res.start()
                 if prev_index != start_pos:
                     m_txt = buffer[prev_index:start_pos]
-                    pos += len(m_txt.encode("utf8"))
                     activity = VRChatLogReader.proc_logevent_text(m_txt, target_user, status)
 
                     if activity is not None:
-                        yield pos, activity
+                        yield activity
 
                 prev_index = start_pos
             buffer = buffer[prev_index:]
 
         if is_read_lastlog:
-            pos += len(buffer.encode("utf8"))
             activity = VRChatLogReader.proc_logevent_text(buffer, target_user, status)
             if activity is not None:
-                yield pos, activity
+                yield activity
 
     @staticmethod
     def proc_logevent_text(text: str, target_user: str, status: LogParserStatus) -> LogEvent:
@@ -298,6 +302,7 @@ class VRChatLogReader:
                     )
 
         # パースされたログを出力
+        status.Pos += len(text.encode("utf8"))
         return activity
 
     @staticmethod
@@ -460,10 +465,10 @@ class DynamoStore:
                 break
             except self.dynamodb.exceptions.ProvisionedThroughputExceededException as ex:
                 if i > 1:
-                    logger.warn("DynamoDB 書き込みでキャパシティ超過を起因とした複数回のエラーが発生.")
+                    logger.warning("DynamoDB 書き込みでキャパシティ超過を起因とした複数回のエラーが発生.")
                     raise
                 else:
-                    logger.warn("DynamoDB 書き込みでキャパシティ超過を起因とした複数回のエラーが発生 (10秒後に再試行).")
+                    logger.warning("DynamoDB 書き込みでキャパシティ超過を起因とした複数回のエラーが発生 (10秒後に再試行).")
                     time.sleep(10)
 
 
@@ -489,7 +494,8 @@ class App:
 
         aws_access_key_id = config.get(f"profile.{profile}", "aws_access_key_id")
         aws_secret_access_key = config.get(f"profile.{profile}", "aws_secret_access_key")
-        self._aws_sess = boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+        self._aws_sess = boto3.Session(aws_access_key_id=aws_access_key_id,
+                                       aws_secret_access_key=aws_secret_access_key)
 
     @property
     def check_interval_sec(self): return self._check_interval_sec
@@ -536,6 +542,7 @@ class App:
             is_moveworld |= activity.Type == LogEventType.EnterWorld or activity.Type == LogEventType.LeftWorld
 
         # 進捗を記録 (最後)
+        print(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} ... ログをアップロード ({count} 件)")
         if is_modified:
             self.set_status(self._app_put_dir, self._profile, self._status)
         if is_moveworld and self._is_enabled_ewq:
@@ -543,7 +550,6 @@ class App:
             logger.info(f"Worker ({self._put_queue_name}) へキューイング")
             self.enqueue_worker(self._put_queue_name, self._account_id, self.aws_sess)
 
-        print(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} ... ログをアップロード ({count} 件)")
         logger.info(f"ログ解析処理を完了 ({count} 件)")
 
     @staticmethod
@@ -609,6 +615,10 @@ class App:
         else:
             return super().default(o)
 
+def get_stacktrace() -> str:
+    t, v, tb = sys.exc_info()
+    stacktrace = "".join(traceback.format_exception(t, v, tb))
+    return stacktrace
 
 if __name__ == "__main__":
     app_dir = Path(__file__) / "../../"

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import boto3
 
+
 class TestVRChatResource:
     def test_readLog(self):
         log_dir = Path("tests/data/log")
@@ -20,8 +21,8 @@ class TestVRChatResource:
                 "output_log_sample03.txt": main.LogParserStatus(0, 0, None, None, None, None),
             }
         )
-        for item in reader:
-            pass
+        logs = list(reader)
+        assert len(logs) > 0
 
 
 class TestVRChatLogReader:
@@ -48,7 +49,7 @@ class TestVRChatLogReader:
         with pytest.raises(main.VRChatLogError) as ex:
             logs = list(reader.read())
         assert ex.value.reason == main.VRChatLogErrorType.LogBufferOverflow
-        
+
         # 対象ユーザ (途中から)
         status = main.LogParserStatus(0, 0, None, None, None, None)
         reader = main.VRChatLogReader(
@@ -59,17 +60,16 @@ class TestVRChatLogReader:
         obj = next(iterator)
 
         reader = main.VRChatLogReader(
-            Path("tests/data/log/output_log_sample01.txt"), True, "認証ユーザ1", status)
+            Path("tests/data/log/output_log_sample01.txt"), True, "認証ユーザ1", reader._status)
         obj = list(reader.read())
         assert len(obj) == 3
 
     def test_read_log(self):
         status = main.LogParserStatus(0, 0, "認証ユーザ1", "現在ワールドID", "現在ワールド名", "現在インスタンスID")
         buff = open("tests/data/log/output_log_sample01.txt", "r")
-        res = main.VRChatLogReader.read_log(buff, True, "認証ユーザ1", 0, status)
-
-        for item in res:
-            pass
+        res = main.VRChatLogReader.read_log(buff, True, "認証ユーザ1", status)
+        res = list(res)
+        assert len(res) > 0
 
     def test_proc_logevent_text_EnterRoom(self):
         status = main.LogParserStatus(
@@ -164,7 +164,7 @@ class TestVRChatLogReader:
 
         status = main.LogParserStatus(
             0, 1, None, "初期ワールドID", "初期ワールド名", "初期インスタンスID")
-        
+
         with pytest.raises(main.VRChatLogError) as ex:
             res = main.VRChatLogReader.proc_logevent_text(
                 "2012.01.23 01:23:45 Log        -  [Behaviour] Initialized PlayerAPI \"認証ユーザ1\" is local\n\n\n", "認証ユーザ2", status)
@@ -288,7 +288,7 @@ class TestApp:
         obj = status["log_01.txt"]
         assert obj.AuthUserDisplayName == "hoge"
         assert obj.CurrentInstanceId == "99999"
-        assert obj.CurrentWorldId ==  "wrld_xxx"
+        assert obj.CurrentWorldId == "wrld_xxx"
         assert obj.CurrentWorldName == "ワールド名"
         assert obj.Pos == 123
         assert obj.VisitedWorldCount == 1
@@ -296,7 +296,7 @@ class TestApp:
         obj = status["log_02.txt"]
         assert obj.AuthUserDisplayName == "hoge"
         assert obj.CurrentInstanceId == "99999"
-        assert obj.CurrentWorldId ==  "wrld_xxx"
+        assert obj.CurrentWorldId == "wrld_xxx"
         assert obj.CurrentWorldName == "ワールド名"
         assert obj.Pos == 123
         assert obj.VisitedWorldCount == 1
@@ -304,7 +304,7 @@ class TestApp:
         obj = status["log_03.txt"]
         assert obj.AuthUserDisplayName == "hoge"
         assert obj.CurrentInstanceId == "99999"
-        assert obj.CurrentWorldId ==  "wrld_xxx"
+        assert obj.CurrentWorldId == "wrld_xxx"
         assert obj.CurrentWorldName == "ワールド名"
         assert obj.Pos == 123
         assert obj.VisitedWorldCount == 1
