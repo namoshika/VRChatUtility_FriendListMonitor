@@ -276,6 +276,7 @@ class App:
             # 更新を抽出
             if friendid_in_db == friend_id_in_vrc:
                 if not App._internal_equalsFriendInfo(friend_in_db, friend_in_vrc):
+                    friend_in_vrc.regist_date = friend_in_db.regist_date
                     yield OperationInfo(ActionType.Update, friend_in_vrc, friend_in_db)
                 i_dbside += 1
                 i_vrcside += 1
@@ -285,6 +286,7 @@ class App:
                 i_dbside += 1
             # 追加を抽出
             else:
+                friend_in_vrc.regist_date = friend_in_vrc.update_date
                 yield OperationInfo(ActionType.Add, friend_in_vrc, None)
                 i_vrcside += 1
 
