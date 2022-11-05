@@ -9,10 +9,10 @@ import time
 import traceback
 from argparse import ArgumentParser
 from configparser import ConfigParser
-from enum import Enum, auto
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Iterable, Tuple
+from common import dynamodb, entity
 
 import schedule
 
@@ -32,99 +32,11 @@ log_hand.setFormatter(log_form)
 logger.addHandler(log_hand)
 
 
-class LogEventType(Enum):
-    EnterWorld = auto()
-    EnterPlayer = auto()
-    LeftWorld = auto()
-    LeftPlayer = auto()
-    JoiningInstance = auto()
-    InitializedApi = auto()
-
-
-class VRChatLogErrorType(Enum):
-    InvalidStatus = auto()
-    MissMatchAuthUser = auto()
-    LogBufferOverflow = auto()
-
-
-@dataclasses.dataclass
-class LogEvent:
-    Type: LogEventType
-    Timestamp: datetime.datetime
-
-
-@dataclasses.dataclass
-class LogEventEnterWorld(LogEvent):
-    InstanceId: str
-    WorldId: str
-    WorldName: str
-
-
-@dataclasses.dataclass
-class LogEventLeftWorld(LogEvent):
-    Type = LogEventType.LeftWorld
-    InstanceId: str
-    WorldId: str
-    WorldName: str
-
-
-@dataclasses.dataclass
-class LogEventEnterPlayer(LogEvent):
-    Type = LogEventType.EnterPlayer
-    InstanceId: str
-    WorldId: str
-    WorldName: str
-    UserDisplayName: str
-
-
-@dataclasses.dataclass
-class LogEventLeftPlayer(LogEvent):
-    Type = LogEventType.LeftPlayer
-    InstanceId: str
-    WorldId: str
-    WorldName: str
-    UserDisplayName: str
-
-
-@dataclasses.dataclass
-class LogEventInitializedApi(LogEvent):
-    Type = LogEventType.InitializedApi
-    InstanceId: str
-    WorldId: str
-    WorldName: str
-    UserDisplayName: str
-    Mode: str
-
-
-@dataclasses.dataclass
-class LogParserStatus:
-    Pos: int
-    VisitedWorldCount: int
-    AuthUserDisplayName: str
-    CurrentWorldId: str
-    CurrentWorldName: str
-    CurrentInstanceId: str
-
-    def update(self, new_value) -> None:
-        self.Pos = new_value.Pos
-        self.VisitedWorldCount = new_value.VisitedWorldCount
-        self.AuthUserDisplayName = new_value.AuthUserDisplayName
-        self.CurrentWorldId = new_value.CurrentWorldId
-        self.CurrentWorldName = new_value.CurrentWorldName
-        self.CurrentInstanceId = new_value.CurrentInstanceId
-
-
-class VRChatLogError(Exception):
-    def __init__(self, reason: VRChatLogErrorType, message: str):
-        self.reason = reason
-        self.message = message
-
-
 class VRChatResource:
     def __init__(self, log_dir: Path):
         self._log_dir = log_dir
 
-    def read_log(self, target_user: str, configs: dict[str, LogParserStatus]) -> Iterable[LogEvent]:
+    def read_log(self, target_user: str, configs: dict[str, entity.LogParserStatus]) -> Iterable[entity.LogEvent]:
         # 読込み対象を決定
         dir = self._log_dir
         items = [(dir / file, conf) for file, conf in configs.items()]
@@ -150,6 +62,7 @@ class VRChatResource:
                 logger.error(msg)
                 raise
 
+
 class VRChatLogReader:
     LOG_BUFFER_SIZE = 102_400
     REGEX_LOG_MSG = re.compile(
@@ -167,18 +80,18 @@ class VRChatLogReader:
     REGEX_LEFT_WORLD = re.compile(
         r"^(?P<Timestamp>\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2})[^-]+-  \[Behaviour\] OnLeftRoom")
 
-    def __init__(self, logfile_path: Path, is_read_lastlog: bool, target_user: str, status: LogParserStatus):
+    def __init__(self, logfile_path: Path, is_read_lastlog: bool, target_user: str, status: entity.LogParserStatus):
         self._logfile_path = logfile_path
         self._is_read_lastlog = is_read_lastlog
         self._target_user = target_user
         self._status = status
         self._log_buff = list()
 
-    def read(self) -> Iterable[LogEvent]:
+    def read(self) -> Iterable[entity.LogEvent]:
         try:
             # 未読込み分のみ処理する
             # TODO: 追加分を読む際にAuthUserが取得できないはず
-            file_pos = self._status.Pos
+            file_pos = self._status.pos
             file_sta = self._logfile_path.stat()
             if file_sta.st_size <= file_pos:
                 return
@@ -188,10 +101,10 @@ class VRChatLogReader:
             log_stream.seek(file_pos)
             status = dataclasses.replace(self._status)
             for activity in self.read_log(log_stream, self._is_read_lastlog, self._target_user, status):
-                if status.AuthUserDisplayName != self._target_user:
-                    if status.Pos >= self.LOG_BUFFER_SIZE:
-                        raise VRChatLogError(
-                            VRChatLogErrorType.LogBufferOverflow,
+                if status.authuser_display_name != self._target_user:
+                    if status.pos >= self.LOG_BUFFER_SIZE:
+                        raise entity.VRChatLogError(
+                            entity.VRChatLogErrorType.LOG_BUFFER_OVERFLOW,
                             f"ログ生成時のログインユーザを特定できませんでした (Over {self.LOG_BUFFER_SIZE} Bytes)"
                         )
                     self._log_buff.append((dataclasses.replace(status), activity))
@@ -207,21 +120,21 @@ class VRChatLogReader:
                         yield activity
 
             if len(self._log_buff) > 0:
-                raise VRChatLogError(
-                    VRChatLogErrorType.LogBufferOverflow, "ログ生成時のログインユーザを特定できませんでした")
+                raise entity.VRChatLogError(
+                    entity.VRChatLogErrorType.LOG_BUFFER_OVERFLOW, "ログ生成時のログインユーザを特定できませんでした")
 
-        except VRChatLogError as ex:
+        except entity.VRChatLogError as ex:
             self._status.update(status)
-            if ex.reason == VRChatLogErrorType.MissMatchAuthUser:
+            if ex.reason == entity.VRChatLogErrorType.MISS_MATCH_AUTHUSER:
                 return
-            if ex.reason == VRChatLogErrorType.LogBufferOverflow:
+            if ex.reason == entity.VRChatLogErrorType.LOG_BUFFER_OVERFLOW:
                 msg = f"ログ (\"{str(self._logfile_path)}\") の解析がスキップされました. ログインユーザが不明です.\n{get_stacktrace()}\n"
                 logger.warning(msg)
                 return
             raise
 
     @staticmethod
-    def read_log(log_stream, is_read_lastlog: bool, target_user: str, status: LogParserStatus) -> Iterable[Tuple[int, str]]:
+    def read_log(log_stream, is_read_lastlog: bool, target_user: str, status: entity.LogParserStatus) -> Iterable[Tuple[int, str]]:
         buffer = ""
         for line in log_stream:
             buffer += line
@@ -244,232 +157,144 @@ class VRChatLogReader:
                 yield activity
 
     @staticmethod
-    def proc_logevent_text(text: str, target_user: str, status: LogParserStatus) -> LogEvent:
+    def proc_logevent_text(text: str, target_user: str, status: entity.LogParserStatus) -> entity.LogEvent:
         # ログを正規化した上でパース
         text_normalized = text.replace("\r", "").strip()
         activity = VRChatLogReader.parse_activity(text_normalized, status)
 
         # パースされた場合はステートを更新
-        if isinstance(activity, LogEventEnterWorld):
-            if activity.Type == LogEventType.EnterWorld:
-                status.CurrentInstanceId = None
-                status.CurrentWorldId = None
-                status.CurrentWorldName = activity.WorldName
+        if isinstance(activity, entity.LogEventEnterWorld):
+            if activity.type == entity.LogEventType.ENTER_WORLD:
+                status.current_instance_id = None
+                status.current_world_id = None
+                status.current_world_name = activity.world_name
                 activity = None
-            elif activity.Type == LogEventType.JoiningInstance:
-                status.CurrentInstanceId = activity.InstanceId
-                status.CurrentWorldId = activity.WorldId
-                status.CurrentWorldName = activity.WorldName
-                status.VisitedWorldCount += 1
+            elif activity.type == entity.LogEventType.JOIN_INSTANCE:
+                status.current_instance_id = activity.instance_id
+                status.current_world_id = activity.world_id
+                status.current_world_name = activity.world_name
+                status.visited_world_count += 1
             else:
-                raise VRChatLogError(
-                    VRChatLogErrorType.InvalidStatus, "ログがプログラムの想定しない状態になっています"
+                raise entity.VRChatLogError(
+                    entity.VRChatLogErrorType.INVALID_STATUS, "ログがプログラムの想定しない状態になっています"
                 )
-        elif isinstance(activity, LogEventEnterPlayer):
-            if status.CurrentInstanceId is None \
-                    or status.CurrentWorldId is None \
-                    or status.CurrentWorldName is None:
-                raise VRChatLogError(
-                    VRChatLogErrorType.InvalidStatus, "ログがプログラムの想定しない状態になっています"
+        elif isinstance(activity, entity.LogEventEnterPlayer):
+            if status.current_instance_id is None \
+                    or status.current_world_id is None \
+                    or status.current_world_name is None:
+                raise entity.VRChatLogError(
+                    entity.VRChatLogErrorType.INVALID_STATUS, "ログがプログラムの想定しない状態になっています"
                 )
-        elif isinstance(activity, LogEventLeftWorld):
-            if status.CurrentInstanceId is None \
-                    or status.CurrentWorldId is None \
-                    or status.CurrentWorldName is None:
-                raise VRChatLogError(
-                    VRChatLogErrorType.InvalidStatus, "ログがプログラムの想定しない状態になっています"
+        elif isinstance(activity, entity.LogEventLeftWorld):
+            if status.current_instance_id is None \
+                    or status.current_world_id is None \
+                    or status.current_world_name is None:
+                raise entity.VRChatLogError(
+                    entity.VRChatLogErrorType.INVALID_STATUS, "ログがプログラムの想定しない状態になっています"
                 )
-        elif isinstance(activity, LogEventLeftPlayer):
-            if status.CurrentInstanceId is None \
-                    or status.CurrentWorldId is None \
-                    or status.CurrentWorldName is None:
-                raise VRChatLogError(
-                    VRChatLogErrorType.InvalidStatus,
+        elif isinstance(activity, entity.LogEventLeftPlayer):
+            if status.current_instance_id is None \
+                    or status.current_world_id is None \
+                    or status.current_world_name is None:
+                raise entity.VRChatLogError(
+                    entity.VRChatLogErrorType.INVALID_STATUS,
                     "ログがプログラムの想定しない状態になっています (現在のワールドが取得される前にその他のログが出力されました)"
                 )
-        elif isinstance(activity, LogEventInitializedApi):
-            if activity.Mode == "local":
-                if status.AuthUserDisplayName is None and status.VisitedWorldCount <= 1:
-                    if activity.UserDisplayName != target_user:
-                        raise VRChatLogError(
-                            VRChatLogErrorType.MissMatchAuthUser, "ログ生成時のログインユーザが対象ユーザと異なります"
+        elif isinstance(activity, entity.LogEventInitializedApi):
+            if activity.mode == "local":
+                if status.authuser_display_name is None and status.visited_world_count <= 1:
+                    if activity.user_display_name != target_user:
+                        raise entity.VRChatLogError(
+                            entity.VRChatLogErrorType.MISS_MATCH_AUTHUSER, "ログ生成時のログインユーザが対象ユーザと異なります"
                         )
-                    status.AuthUserDisplayName = activity.UserDisplayName
-                elif status.AuthUserDisplayName is None and status.VisitedWorldCount > 1 or status.AuthUserDisplayName != activity.UserDisplayName:
-                    raise VRChatLogError(
-                        VRChatLogErrorType.InvalidStatus,
+                    status.authuser_display_name = activity.user_display_name
+                elif status.authuser_display_name is None and status.visited_world_count > 1 or status.authuser_display_name != activity.user_display_name:
+                    raise entity.VRChatLogError(
+                        entity.VRChatLogErrorType.INVALID_STATUS,
                         "ログがプログラムの想定しない状態になっています (PlayerAPI へ想定外の初期化が行われました)"
                     )
 
         # パースされたログを出力
-        status.Pos += len(text.encode("utf8"))
+        status.pos += len(text.encode("utf8"))
         return activity
 
     @staticmethod
-    def parse_activity(log_item: str, status: LogParserStatus) -> LogEvent:
+    def parse_activity(log_item: str, status: entity.LogParserStatus) -> entity.LogEvent:
         if log_item == "" or log_item[34:45] != "[Behaviour]":
             return None
         elif match_res := VRChatLogReader.REGEX_ENTER_WORLD_01.match(log_item):
             timestamp = match_res.group("Timestamp")
             worldName = match_res.group("WorldName")
             timestamp = datetime.datetime.strptime(timestamp, "%Y.%m.%d %H:%M:%S")
-            return LogEventEnterWorld(
-                Type=LogEventType.EnterWorld,
-                Timestamp=timestamp,
-                InstanceId=status.CurrentInstanceId,
-                WorldId=status.CurrentWorldId,
-                WorldName=worldName
+            return entity.LogEventEnterWorld(
+                type=entity.LogEventType.ENTER_WORLD,
+                timestamp=timestamp,
+                instance_id=status.current_instance_id,
+                world_id=status.current_world_id,
+                world_name=worldName
             )
         elif match_res := VRChatLogReader.REGEX_ENTER_WORLD_02.match(log_item):
             timestamp = match_res.group("Timestamp")
             instance_id = match_res.group("InstanceId")
             world_id = match_res.group("WorldId")
             timestamp = datetime.datetime.strptime(timestamp, "%Y.%m.%d %H:%M:%S")
-            return LogEventEnterWorld(
-                Type=LogEventType.JoiningInstance,
-                Timestamp=timestamp,
-                InstanceId=instance_id,
-                WorldId=world_id,
-                WorldName=status.CurrentWorldName
+            return entity.LogEventEnterWorld(
+                type=entity.LogEventType.JOIN_INSTANCE,
+                timestamp=timestamp,
+                instance_id=instance_id,
+                world_id=world_id,
+                world_name=status.current_world_name
             )
         elif match_res := VRChatLogReader.REGEX_LEFT_WORLD.match(log_item):
             timestamp = match_res.group("Timestamp")
             timestamp = datetime.datetime.strptime(timestamp, "%Y.%m.%d %H:%M:%S")
-            return LogEventLeftWorld(
-                Type=LogEventType.LeftWorld,
-                Timestamp=timestamp,
-                InstanceId=status.CurrentInstanceId,
-                WorldId=status.CurrentWorldId,
-                WorldName=status.CurrentWorldName
+            return entity.LogEventLeftWorld(
+                type=entity.LogEventType.LEFT_WORLD,
+                timestamp=timestamp,
+                instance_id=status.current_instance_id,
+                world_id=status.current_world_id,
+                world_name=status.current_world_name
             )
         elif match_res := VRChatLogReader.REGEX_PLAYER_JOINED.match(log_item):
             timestamp = match_res.group("Timestamp")
             userName = match_res.group("UserName")
             timestamp = datetime.datetime.strptime(timestamp, "%Y.%m.%d %H:%M:%S")
-            return LogEventEnterPlayer(
-                Type=LogEventType.EnterPlayer,
-                Timestamp=timestamp,
-                InstanceId=status.CurrentInstanceId,
-                WorldId=status.CurrentWorldId,
-                WorldName=status.CurrentWorldName,
-                UserDisplayName=userName
+            return entity.LogEventEnterPlayer(
+                type=entity.LogEventType.ENTER_PLAYER,
+                timestamp=timestamp,
+                instance_id=status.current_instance_id,
+                world_id=status.current_world_id,
+                world_name=status.current_world_name,
+                user_display_name=userName
             )
         elif match_res := VRChatLogReader.REGEX_PLAYER_LEFT.match(log_item):
             timestamp = match_res.group("Timestamp")
             userName = match_res.group("UserName")
             timestamp = datetime.datetime.strptime(timestamp, "%Y.%m.%d %H:%M:%S")
-            return LogEventLeftPlayer(
-                Type=LogEventType.LeftPlayer,
-                Timestamp=timestamp,
-                InstanceId=status.CurrentInstanceId,
-                WorldId=status.CurrentWorldId,
-                WorldName=status.CurrentWorldName,
-                UserDisplayName=userName
+            return entity.LogEventLeftPlayer(
+                type=entity.LogEventType.LEFT_PLAYER,
+                timestamp=timestamp,
+                instance_id=status.current_instance_id,
+                world_id=status.current_world_id,
+                world_name=status.current_world_name,
+                user_display_name=userName
             )
         elif match_res := VRChatLogReader.REGEX_INITIALIZED_API.match(log_item):
             timestamp = match_res.group("Timestamp")
             userName = match_res.group("UserName")
             api_mode = match_res.group("Mode")
             timestamp = datetime.datetime.strptime(timestamp, "%Y.%m.%d %H:%M:%S")
-            return LogEventInitializedApi(
-                Type=LogEventType.InitializedApi,
-                Timestamp=timestamp,
-                InstanceId=status.CurrentInstanceId,
-                WorldId=status.CurrentWorldId,
-                WorldName=status.CurrentWorldName,
-                UserDisplayName=userName,
-                Mode=api_mode
+            return entity.LogEventInitializedApi(
+                type=entity.LogEventType.INITIALIZE_API,
+                timestamp=timestamp,
+                instance_id=status.current_instance_id,
+                world_id=status.current_world_id,
+                world_name=status.current_world_name,
+                user_display_name=userName,
+                mode=api_mode
             )
         else:
             return None
-
-
-class DynamoStore:
-    SUFFIX_LEN: int = 3
-
-    def __init__(self, get_table_name: str, put_table_name: str, aws_sess: boto3.Session):
-        self.dynamodb = aws_sess.client("dynamodb")
-        self.dynamodb_res = aws_sess.resource("dynamodb")
-        self._get_table = self.dynamodb_res.Table(get_table_name)
-        self._put_table = self.dynamodb_res.Table(put_table_name)
-
-    def put_activity(self, activity: LogEvent, account_id: str) -> None:
-        timestamp_id = activity.Timestamp.strftime("%Y%m%d_%H%M%S")
-        timestamp_text = activity.Timestamp.strftime("%Y.%m.%d %H:%M:%S")
-        # レコード有効期限を秒単位の UNIXTIME として生成
-        expiration_time = datetime.datetime.now()
-        expiration_time = expiration_time + datetime.timedelta(hours=24)
-        expiration_time = int(expiration_time.timestamp())
-
-        i = 0
-        while True:
-            try:
-                if isinstance(activity, LogEventEnterWorld):
-                    val_sk = f"#activity:world.enter#timestamp:{timestamp_id}"
-                    val_suffix = sum(val_sk.encode()) % self.SUFFIX_LEN
-                    self._put_table.put_item(Item={
-                        "pk": f"#account:{account_id}#suffix:{val_suffix}",
-                        "sk": val_sk,
-                        "instance_id": activity.InstanceId,
-                        "world_id": activity.WorldId,
-                        "world_name": activity.WorldName,
-                        "timestamp": timestamp_text,
-                        "expiration_time": expiration_time
-                    })
-                elif isinstance(activity, LogEventLeftWorld):
-                    val_sk = f"#activity:world.left#timestamp:{timestamp_id}"
-                    val_suffix = sum(val_sk.encode()) % self.SUFFIX_LEN
-                    self._put_table.put_item(Item={
-                        "pk": f"#account:{account_id}#suffix:{val_suffix}",
-                        "sk": val_sk,
-                        "instance_id": activity.InstanceId,
-                        "world_id": activity.WorldId,
-                        "world_name": activity.WorldName,
-                        "timestamp": timestamp_text,
-                        "expiration_time": expiration_time
-                    })
-                elif isinstance(activity, LogEventEnterPlayer):
-                    username_esc = activity.UserDisplayName
-                    username_esc = username_esc.replace("\\", "\\\\")
-                    username_esc = username_esc.replace("#", "\\u0023")
-                    username_esc = username_esc.replace(":", "\\u003a")
-                    val_sk = f"#activity:user.enter.{username_esc}#timestamp:{timestamp_id}"
-                    val_suffix = sum(val_sk.encode()) % self.SUFFIX_LEN
-                    self._put_table.put_item(Item={
-                        "pk": f"#account:{account_id}#suffix:{val_suffix}",
-                        "sk": val_sk,
-                        "instance_id": activity.InstanceId,
-                        "world_id": activity.WorldId,
-                        "world_name": activity.WorldName,
-                        "user_name": activity.UserDisplayName,
-                        "timestamp": timestamp_text,
-                        "expiration_time": expiration_time
-                    })
-                elif isinstance(activity, LogEventLeftPlayer):
-                    username_esc = activity.UserDisplayName
-                    username_esc = username_esc.replace("\\", "\\\\")
-                    username_esc = username_esc.replace("#", "\\u0023")
-                    username_esc = username_esc.replace(":", "\\u003a")
-                    val_sk = f"#activity:user.left.{username_esc}#timestamp:{timestamp_id}"
-                    val_suffix = sum(val_sk.encode()) % self.SUFFIX_LEN
-                    self._put_table.put_item(Item={
-                        "pk": f"#account:{account_id}#suffix:{val_suffix}",
-                        "sk": val_sk,
-                        "instance_id": activity.InstanceId,
-                        "world_id": activity.WorldId,
-                        "world_name": activity.WorldName,
-                        "user_name": activity.UserDisplayName,
-                        "timestamp": timestamp_text,
-                        "expiration_time": expiration_time
-                    })
-                break
-            except self.dynamodb.exceptions.ProvisionedThroughputExceededException as ex:
-                if i > 1:
-                    logger.warning("DynamoDB 書き込みでキャパシティ超過を起因とした複数回のエラーが発生.")
-                    raise
-                else:
-                    logger.warning("DynamoDB 書き込みでキャパシティ超過を起因とした複数回のエラーが発生 (10秒後に再試行).")
-                    time.sleep(10)
 
 
 class App:
@@ -494,9 +319,11 @@ class App:
 
         aws_access_key_id = config.get(f"profile.{profile}", "aws_access_key_id")
         aws_secret_access_key = config.get(f"profile.{profile}", "aws_secret_access_key")
-        self._aws_sess = boto3.Session(aws_access_key_id=aws_access_key_id,
-                                       aws_secret_access_key=aws_secret_access_key)
+        self._aws_sess = boto3.Session(
+            aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
 
+    @property
+    def account_id(self): return self._account_id
     @property
     def check_interval_sec(self): return self._check_interval_sec
     @property
@@ -508,7 +335,7 @@ class App:
     @property
     def aws_sess(self): return self._aws_sess
 
-    def init(self, vrc_client: VRChatResource, dynamo_store: DynamoStore):
+    def init(self, vrc_client: VRChatResource, dynamo_store: dynamodb.Service):
         self._vrc = vrc_client
         self._dynamo = dynamo_store
 
@@ -518,7 +345,7 @@ class App:
         # 各ログファイルの読込み済みバイト数の記録を取得
         # 存在しないログファイルの読込み済みバイト数の記録は削除
         self._status = {
-            f.name: self._status.get(f.name) or LogParserStatus(0, 0, None, None, None, None)
+            f.name: self._status.get(f.name) or entity.LogParserStatus(0, 0, None, None, None, None)
             for f in self._logdir.glob("output_log_*.txt") if f.is_file()
         }
 
@@ -529,7 +356,7 @@ class App:
         is_moveworld = False
         for activity in self._vrc.read_log(self._account_name, self._status):
             # DB へアクティビティを転送
-            self._dynamo.put_activity(activity, self._account_id)
+            self._dynamo.put_activity(activity)
 
             # 進捗を記録 (途中。10秒置きに記録)
             newTime = datetime.datetime.now()
@@ -539,7 +366,7 @@ class App:
 
             count += 1
             is_modified = True
-            is_moveworld |= activity.Type == LogEventType.EnterWorld or activity.Type == LogEventType.LeftWorld
+            is_moveworld |= activity.type == entity.LogEventType.ENTER_WORLD or activity.type == entity.LogEventType.LEFT_WORLD
 
         # 進捗を記録 (最後)
         print(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} ... ログをアップロード ({count} 件)")
@@ -567,7 +394,7 @@ class App:
         )
 
     @staticmethod
-    def get_status(app_dir: Path, profile: str) -> dict[str, LogParserStatus]:
+    def get_status(app_dir: Path, profile: str) -> dict[str, entity.LogParserStatus]:
         cp_filepath = app_dir / f"checkpoint/{profile}.json"
         cp_filepath = cp_filepath.resolve()
         try:
@@ -578,7 +405,7 @@ class App:
             return dict()
 
     @staticmethod
-    def set_status(app_dir: Path, profile: str, value: dict[str, LogParserStatus]) -> None:
+    def set_status(app_dir: Path, profile: str, value: dict[str, entity.LogParserStatus]) -> None:
         cp_filepath = app_dir / f"checkpoint/{profile}.json"
         cp_filepath = cp_filepath.resolve()
         cp_text = json.dumps(value, ensure_ascii=False, indent=2, default=App.json_enc)
@@ -591,7 +418,7 @@ class App:
 
         typ = o["_type"]
         if typ == "LogParserStatus":
-            return LogParserStatus(
+            return entity.LogParserStatus(
                 o["Pos"],
                 o["VisitedWorldCount"],
                 o["AuthUserDisplayName"],
@@ -602,23 +429,25 @@ class App:
 
     @staticmethod
     def json_enc(o):
-        if isinstance(o, LogParserStatus):
+        if isinstance(o, entity.LogParserStatus):
             return {
                 "_type": "LogParserStatus",
-                "Pos": o.Pos,
-                "VisitedWorldCount": o.VisitedWorldCount,
-                "AuthUserDisplayName": o.AuthUserDisplayName,
-                "CurrentWorldId": o.CurrentWorldId,
-                "CurrentWorldName": o.CurrentWorldName,
-                "CurrentInstanceId": o.CurrentInstanceId
+                "Pos": o.pos,
+                "VisitedWorldCount": o.visited_world_count,
+                "AuthUserDisplayName": o.authuser_display_name,
+                "CurrentWorldId": o.current_world_id,
+                "CurrentWorldName": o.current_world_name,
+                "CurrentInstanceId": o.current_instance_id
             }
         else:
             return super().default(o)
+
 
 def get_stacktrace() -> str:
     t, v, tb = sys.exc_info()
     stacktrace = "".join(traceback.format_exception(t, v, tb))
     return stacktrace
+
 
 if __name__ == "__main__":
     app_dir = Path(__file__) / "../../"
@@ -633,7 +462,7 @@ if __name__ == "__main__":
 
     app = App(app_dir, app_dir, arg_profile)
     vrc = VRChatResource(app.log_dir)
-    dyn = DynamoStore(app.get_table_name, app.put_table_name, app.aws_sess)
+    dyn = dynamodb.Service(app.account_id, app.get_table_name, app.put_table_name, app.aws_sess, logger)
     app.init(vrc, dyn)
 
     if arg_watch == False:
