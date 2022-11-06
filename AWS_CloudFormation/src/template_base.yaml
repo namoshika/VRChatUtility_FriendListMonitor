@@ -199,6 +199,33 @@ Resources:
           GroupName: !Sub /vrcu/${EnvType}/buildpipeline
           StreamName: FriendListMonitor-Worker
 
+  CodeBuildFriendListProcesser:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub vrcu-${EnvType}-FriendListProcesser-codebuild
+      ServiceRole: !GetAtt IamRoleCodeBuild.Arn
+      ResourceAccessRole: !GetAtt IamRoleCodeBuild.Arn
+      TimeoutInMinutes: 10
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - { Name: ENV_TYPE, Type: PLAINTEXT, Value: !Ref EnvType }
+          - { Name: STACK_NAME, Type: PLAINTEXT, Value: !Sub "vrcu-${EnvType}-FriendListProcesser" }
+      Source:
+        Type: CODECOMMIT
+        Location: !Ref AppRepoUrl
+        BuildSpec: AWS_Lambda/FriendListProcesser/buildspec.yml
+        GitCloneDepth: 1
+      SourceVersion: refs/heads/master
+      Artifacts: { Type: NO_ARTIFACTS }
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Sub /vrcu/${EnvType}/buildpipeline
+          StreamName: FriendListProcesser
+
   EventRuleBuildPipeline:
     Type: AWS::Events::Rule
     Properties:
@@ -280,6 +307,13 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/build-project-mapping/vrcu-${EnvType}-FriendListMonitor-Worker-codebuild
       Type: String
       Value: AWS_Lambda/FriendListMonitor_Worker/
+
+  ParamCodeBuildPathMapping03:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/build-project-mapping/vrcu-${EnvType}-FriendListProcesser-codebuild
+      Type: String
+      Value: AWS_Lambda/FriendListProcesser/
 
   ParamDynamoDbAppTable:
     Type: AWS::SSM::Parameter
