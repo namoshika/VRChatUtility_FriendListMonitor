@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  EnvType: {Type: String, AllowedValues: [prd, dev]}
+  LambdaFunctionRole: {Type: String}
+  AppTableName: {Type: String}
+  ProcesserQueueArn: {Type: String}
+
+Resources:
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub vrcu-${EnvType}-lambda-FriendListProcesser
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Timeout: 120
+      CodeUri: src
+      Role: !Ref LambdaFunctionRole
+      Environment:
+        Variables:
+          APP_GET_TABLE_NAME: !Ref AppTableName
+          APP_PUT_TABLE_NAME: !Ref AppTableName
+
+  LambdaPolicy:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref LambdaFunction
+      Principal: sqs.amazonaws.com
+      SourceArn: !Ref ProcesserQueueArn
+
+  LambdaTrigger:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      Enabled: True
+      FunctionName: !Ref LambdaFunction
+      EventSourceArn: !Ref ProcesserQueueArn

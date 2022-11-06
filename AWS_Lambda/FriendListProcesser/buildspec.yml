@@ -1,0 +1,19 @@
+version: 0.2
+
+env:
+  parameter-store:
+    LAMBDA_ROLE: /vrcu/${ENV_TYPE}/role-exec-lambda
+    APP_TABLE_NAME: /vrcu/${ENV_TYPE}/dynamodb-appdb
+    PROCESSER_QUEUE_ARN: /vrcu/${ENV_TYPE}/sqs-processer-arn
+    TMP_S3_BUCKET: /vrcu/s3-bucket
+    TMP_S3_PREFIX: /vrcu/s3-prefix
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+  build:
+    commands:
+      - pip install notion-client=="1.0.1" -t AWS_Lambda/FriendListProcesser/src
+      - aws cloudformation package --template-file AWS_Lambda/FriendListProcesser/cloudformation.yml --s3-bucket $TMP_S3_BUCKET --s3-prefix $TMP_S3_PREFIX --output-template-file AWS_Lambda/FriendListProcesser/cloudformation_packaged.yml
+      - aws cloudformation deploy --template-file AWS_Lambda/FriendListProcesser/cloudformation_packaged.yml --stack-name $STACK_NAME --parameter-overrides LambdaFunctionRole=$(eval echo $LAMBDA_ROLE) EnvType=$ENV_TYPE AppTableName=$(eval echo $APP_TABLE_NAME) ProcesserQueueArn=$(eval echo $PROCESSER_QUEUE_ARN)
