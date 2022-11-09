@@ -5,8 +5,8 @@ env:
     LAMBDA_ROLE: /vrcu/${ENV_TYPE}/role-exec-lambda
     APP_TABLE_NAME: /vrcu/${ENV_TYPE}/dynamodb-appdb
     WORKER_QUEUE: /vrcu/${ENV_TYPE}/sqs-worker
-    TMP_S3_BUCKET: /vrcu/s3-bucket
-    TMP_S3_PREFIX: /vrcu/s3-prefix
+    TMP_S3_BUCKET: /vrcu/${ENV_TYPE}/s3-bucket
+    TMP_S3_PREFIX: /vrcu/${ENV_TYPE}/s3-prefix
 
 phases:
   install:

@@ -6,8 +6,8 @@ env:
     APP_TABLE_NAME: /vrcu/${ENV_TYPE}/dynamodb-appdb
     PROCESSER_QUEUE: /vrcu/${ENV_TYPE}/sqs-processer
     WORKER_QUEUE_ARN: /vrcu/${ENV_TYPE}/sqs-worker-arn
-    TMP_S3_BUCKET: /vrcu/s3-bucket
-    TMP_S3_PREFIX: /vrcu/s3-prefix
+    TMP_S3_BUCKET: /vrcu/${ENV_TYPE}/s3-bucket
+    TMP_S3_PREFIX: /vrcu/${ENV_TYPE}/s3-prefix
 
 phases:
   install:

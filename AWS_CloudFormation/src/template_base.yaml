@@ -164,7 +164,7 @@ Resources:
         Location: !Ref AppRepoUrl
         BuildSpec: AWS_Lambda/FriendListMonitor_Dispatcher/buildspec.yml
         GitCloneDepth: 1
-      SourceVersion: refs/heads/master
+      SourceVersion: !Ref AppRepoRef
       Artifacts: { Type: NO_ARTIFACTS }
       LogsConfig:
         CloudWatchLogs:
@@ -191,7 +191,7 @@ Resources:
         Location: !Ref AppRepoUrl
         BuildSpec: AWS_Lambda/FriendListMonitor_Worker/buildspec.yml
         GitCloneDepth: 1
-      SourceVersion: refs/heads/master
+      SourceVersion: !Ref AppRepoRef
       Artifacts: { Type: NO_ARTIFACTS }
       LogsConfig:
         CloudWatchLogs:
@@ -218,7 +218,7 @@ Resources:
         Location: !Ref AppRepoUrl
         BuildSpec: AWS_Lambda/FriendListProcesser/buildspec.yml
         GitCloneDepth: 1
-      SourceVersion: refs/heads/master
+      SourceVersion: !Ref AppRepoRef
       Artifacts: { Type: NO_ARTIFACTS }
       LogsConfig:
         CloudWatchLogs:
@@ -325,14 +325,14 @@ Resources:
   ParamS3TmpBucket:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /vrcu/s3-bucket
+      Name: !Sub /vrcu/${EnvType}/s3-bucket
       Type: String
       Value: !Ref TempS3Bucket
 
   ParamS3TmpPrefix:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /vrcu/s3-prefix
+      Name: !Sub /vrcu/${EnvType}/s3-prefix
       Type: String
       Value: !Ref TempS3Prefix
 
