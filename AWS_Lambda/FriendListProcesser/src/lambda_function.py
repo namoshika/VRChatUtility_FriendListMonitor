@@ -153,9 +153,13 @@ def lambda_handler(event, context):
 
         ses = boto3.Session()
         dynamo = dynamodb.Service(account_id, APP_GET_TABLE_NAME, APP_PUT_TABLE_NAME, ses, logger)
+        meta = dynamo.get_app_metadata("notion")
+        if meta is None:
+            continue
 
-        acc = dynamo.get_account()
-        notion = NotionResource(acc.notion_databaseid_friendlist, acc.notion_auth_token)
+        databaseid_friendlist = meta["databaseid_friendlist"]
+        auth_token = meta["auth_token"]
+        notion = NotionResource(databaseid_friendlist, auth_token)
 
         app = App(dynamo, notion)
         app.invoke(op_info)

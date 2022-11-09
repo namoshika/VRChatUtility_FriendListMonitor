@@ -12,8 +12,6 @@ from .entity import *
 class AccountInfo:
     vrchat_user_name: str
     vrchat_passwd: str
-    notion_auth_token: str
-    notion_databaseid_friendlist: str
     cookies: CookieJar
 
 
@@ -35,10 +33,9 @@ class Service:
         # 更新式を作成
         exp_update = "SET "
         exp_base = {
+            "vrchat_user_id": self._account_id,
             "vrchat_user_name": info.vrchat_user_name,
             "vrchat_passwd": info.vrchat_passwd,
-            "notion_auth_token": info.notion_auth_token,
-            "notion_databaseid_friendlist": info.notion_databaseid_friendlist,
             "cookies": cookies_txt,
             "update_date": update_unixtime
         }
@@ -67,16 +64,54 @@ class Service:
         res_api = res_api["Item"]
         vrchat_user_name = res_api["vrchat_user_name"]
         vrchat_passwd = res_api["vrchat_passwd"]
-        notion_auth_token = res_api["notion_auth_token"]
-        notion_databaseid_friendlist = res_api["notion_databaseid_friendlist"]
         cookies = self.text2cookiejar(res_api["cookies"]) if "cookies" in res_api else MozillaCookieJar()
-        return AccountInfo(vrchat_user_name, vrchat_passwd, notion_auth_token, notion_databaseid_friendlist, cookies)
+        return AccountInfo(vrchat_user_name, vrchat_passwd, cookies)
 
     def del_account(self) -> None:
         self._get_table.delete_item(Key={
             "pk": "#app:monitoring_accounts",
             "sk": f"#account:{self._account_id}"
         })
+
+    def connect_app(self, app_name: str, metadata: dict[str, str]):
+        # 更新式を作成
+        exp_update = "SET "
+        exp_base = [(key, val) for key, val in metadata.items() if val is not None]
+        exp_update = ", ".join([f"{key} = :{key}_val" for key, _ in exp_base])
+        if exp_update == "":
+            return
+        exp_update = f"SET {exp_update}"
+        exp_values = {f":{key}_val": val for key, val in exp_base}
+
+        # 更新クエリを実行
+        self._put_table.update_item(
+            Key={
+                "pk": f"#account:{self._account_id}",
+                "sk": f"#connect:{app_name}"
+            },
+            UpdateExpression=exp_update,
+            ExpressionAttributeValues=exp_values
+        )
+
+    def get_app_metadata(self, app_name: str) -> dict[str, str]:
+        res_api = self._get_table.get_item(Key={
+            "pk": f"#account:{self._account_id}",
+            "sk": f"#connect:{app_name}"
+        })
+        res_api = res_api.get("Item")
+        if res_api is None:
+            return None
+
+        del res_api["pk"], res_api["sk"]
+        return res_api
+
+    def disconnect_app(self, app_name: str) -> None:
+        self._put_table.delete_item(
+            Key={
+                "pk": f"#account:{self._account_id}",
+                "sk": f"#connect:{app_name}"
+            }
+        )
 
     def get_friends(self) -> list[FriendInfo]:
         db_res = self._get_table.query(
@@ -97,7 +132,19 @@ class Service:
         # 失敗した場合には再試行。2回失敗した場合は catch 句で中断させる
         for i in range(2):
             try:
-                if op.action == ActionType.ADD:
+                if op.action == ActionType.MIGRATION:
+                    self._put_table.put_item(
+                        Item={
+                            "pk": f"#account:{self._account_id}",
+                            "sk": f"#friend:{op.info_new.user_id}",
+                            "user_id": op.info_new.user_id,
+                            "user_name": op.info_new.user_name,
+                            "user_display_name": op.info_new.user_display_name,
+                            "regist_date": op.info_new.regist_date,
+                            "update_date": op.info_new.update_date
+                        }
+                    )
+                elif op.action == ActionType.ADD:
                     self._put_table.put_item(
                         Item={
                             "pk": f"#account:{self._account_id}",
@@ -245,7 +292,6 @@ class Service:
         )
         return res
 
-
     @staticmethod
     def get_accounts(get_table_name: str, current_date: datetime, cooldown_sec: int, limit: int) -> str:
         dynamodb_res = boto3.resource("dynamodb")
@@ -264,7 +310,7 @@ class Service:
         while limit == 0 or count < limit:
             res_api = get_table.query(**params)
             for item in res_api["Items"]:
-                yield item["user_id"]
+                yield item["vrchat_user_id"]
                 count += 1
 
             # 続きが無ければ処理終了

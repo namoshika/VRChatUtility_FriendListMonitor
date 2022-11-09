@@ -25,19 +25,38 @@ class TestService:
         assert len(accounts) > 0
 
         # アカウント情報を登録
-        put_info = src.dynamodb.AccountInfo("ユーザ名", "パスワード", "Notion認証トークン", "NotionデータベースID", None)
+        put_info = src.dynamodb.AccountInfo("ユーザ名", "パスワード", None)
         store.put_account(put_info, datetime.datetime.now())
 
         # アカウント情報を取得
         get_info = store.get_account()
         assert get_info.vrchat_user_name == put_info.vrchat_user_name
         assert get_info.vrchat_passwd == put_info.vrchat_passwd
-        assert get_info.notion_auth_token == put_info.notion_auth_token
-        assert get_info.notion_databaseid_friendlist == put_info.notion_databaseid_friendlist
         assert get_info.cookies is not None
 
         # アカウント情報を削除
         store.del_account()
+
+    def test_crud_app(self):
+        logger = logging.getLogger(__name__)
+        store = src.dynamodb.Service(
+            "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+            os.getenv("APP_GET_TABLE_NAME"),
+            os.getenv("APP_PUT_TABLE_NAME"),
+            boto3.Session(),
+            logger
+        )
+
+        res = store.get_app_metadata("sample_app")
+        assert res is None
+
+        store.connect_app("sample_app", {"key1": "val1", "key2": "val2"})
+        res = store.get_app_metadata("sample_app")
+        assert res["key1"] == "val1" and res["key2"] == "val2"
+
+        store.disconnect_app("sample_app")
+        res = store.get_app_metadata("sample_app")
+        assert res is None
 
     def test_crud_friend(self):
         logger = logging.getLogger(__name__)

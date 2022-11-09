@@ -6,6 +6,7 @@ from enum import Enum, auto
 
 
 class ActionType(enum.Enum):
+    MIGRATION = enum.auto()
     ADD = enum.auto()
     UPDATE = enum.auto()
     REMOVE = enum.auto()
@@ -42,6 +43,15 @@ class FriendInfo:
     def __lt__(self, other) -> bool:
         return self.user_id < other.user_id
 
+    @staticmethod
+    def from_dict(value: dict[str, str]):
+        return FriendInfo(
+            value["user_id"],
+            value["user_name"],
+            value["user_display_name"],
+            value["regist_date"],
+            value["update_date"]
+        )
 
 @dataclass
 class OperationInfo:
@@ -147,6 +157,7 @@ class CustomJsonEncoder(json.JSONEncoder):
 
 class CustomJsonDecoder(json.JSONDecoder):
     ACTION_TYPE_DICT = {
+        "MIGRATION": ActionType.MIGRATION,
         "ADD": ActionType.ADD,
         "REMOVE": ActionType.REMOVE,
         "UPDATE": ActionType.UPDATE
