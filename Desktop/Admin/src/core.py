@@ -1,7 +1,7 @@
 import boto3
 import csv
 import logging
-from common import dynamodb, entity
+from common import dynamodb, entity, sqs
 from datetime import datetime
 
 logger = logging.getLogger()
@@ -67,8 +67,13 @@ class FriendManager:
         for item in friends:
             dynamo.put_friend(entity.OperationInfo(entity.ActionType.REMOVE, None, item))
 
+class JobManager:
+    def enqueue_worker(self, account: str, queue: str):
+        client = sqs.WorkerService(queue, logger)
+        client.enqueue(account)
 
 class App:
     def __init__(self):
         self.account = AccountManager()
         self.friend = FriendManager()
+        self.job = JobManager()
