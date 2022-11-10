@@ -3,7 +3,6 @@ import csv
 import logging
 from common import dynamodb, entity
 from datetime import datetime
-from typing import Iterable, Tuple
 
 logger = logging.getLogger()
 
@@ -46,13 +45,13 @@ class FriendManager:
                 item.update_date
             ] for item in dynamo.get_friends()
         ])
-        with open(path, "w") as f:
-            writer = csv.writer(f, csv.excel_tab)
+        with open(path, "w", encoding="utf8") as f:
+            writer = csv.writer(f, delimiter="\t", lineterminator="\n")
             writer.writerows(friends)
 
     def import_csv(self, account: str, app_table: str, path: str):
-        with open(path, "r") as f:
-            friends = csv.DictReader(f, dialect=csv.excel_tab())
+        with open(path, "r", encoding="utf8") as f:
+            friends = csv.DictReader(f, delimiter="\t", lineterminator="\n")
             friends = [entity.FriendInfo.from_dict(item) for item in friends]
 
         sess = boto3.Session()
@@ -70,5 +69,6 @@ class FriendManager:
 
 
 class App:
-    account = AccountManager()
-    friend = FriendManager()
+    def __init__(self):
+        self.account = AccountManager()
+        self.friend = FriendManager()
