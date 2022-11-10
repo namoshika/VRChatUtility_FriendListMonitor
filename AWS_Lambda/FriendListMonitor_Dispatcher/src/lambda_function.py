@@ -1,5 +1,3 @@
-import boto3
-import json
 import logging
 import os
 from common import dynamodb, sqs
