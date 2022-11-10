@@ -1,8 +1,9 @@
 import boto3
 import csv
 import logging
-from typing import Iterable, Tuple
 from common import dynamodb, entity
+from datetime import datetime
+from typing import Iterable, Tuple
 
 logger = logging.getLogger()
 
@@ -12,7 +13,7 @@ class AccountManager:
         sess = boto3.Session()
         dynamo = dynamodb.Service(account, app_table, app_table, sess, logger)
         acc = dynamodb.AccountInfo(user_name, passwd, None)
-        dynamo.put_account(acc, None)
+        dynamo.put_account(acc, datetime.fromtimestamp(0))
 
     def disconnect_vrchat(self, account: str, app_table: str):
         sess = boto3.Session()
