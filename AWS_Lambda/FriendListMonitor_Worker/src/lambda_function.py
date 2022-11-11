@@ -21,8 +21,8 @@ class App:
         friends_in_dyn = self._dyn.get_friends()
 
         for item in extract_change_friends(friends_in_dyn, friends_in_vrc, update_date):
-            self._sqs.enqueue(item)
             self._dyn.put_friend(item)
+            self._sqs.enqueue(item)
         
 
 def extract_change_friends(infos_old: list[entity.FriendInfo], infos_new: list[entity.FriendInfo], update_date: datetime) -> Iterable[entity.OperationInfo]:
@@ -76,7 +76,8 @@ def lambda_handler(event, context):
 
         # 本処理
         update_date = datetime.now()
-        res_sqs = sqs.ProcesserService(account_id, PROCESSER_PUT_QUEUE, logger)
+        sess = boto3.Session()
+        res_sqs = sqs.ProcesserService(account_id, PROCESSER_PUT_QUEUE, sess, logger)
         res_vrc = vrchat.Service(acc.vrchat_user_name, acc.vrchat_passwd, acc.cookies)
         app = App(res_vrc, res_db, res_sqs)
         app.invoke(update_date)

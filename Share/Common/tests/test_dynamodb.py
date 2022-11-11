@@ -4,12 +4,12 @@ import os
 import sys
 import boto3
 
-sys.path.append("src")
-import src.dynamodb
-
 
 class TestService:
     def test_crud_account(self):
+        sys.path.append("src")
+        import src.dynamodb
+
         logger = logging.getLogger(__name__)
         store = src.dynamodb.Service(
             "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
@@ -38,6 +38,9 @@ class TestService:
         store.del_account()
 
     def test_crud_app(self):
+        sys.path.append("src")
+        import src.dynamodb
+
         logger = logging.getLogger(__name__)
         store = src.dynamodb.Service(
             "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
@@ -59,6 +62,9 @@ class TestService:
         assert res is None
 
     def test_crud_friend(self):
+        sys.path.append("src")
+        import src.dynamodb
+
         logger = logging.getLogger(__name__)
         store = src.dynamodb.Service(
             "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
@@ -138,6 +144,9 @@ class TestService:
         store.put_friend(op)
 
     def test_crud_activity(self):
+        sys.path.append("src")
+        import src.dynamodb
+
         logger = logging.getLogger(__name__)
         store = src.dynamodb.Service(
             "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",

@@ -1,3 +1,4 @@
+import boto3
 import logging
 import os
 from common import dynamodb, sqs
@@ -15,14 +16,15 @@ class App:
 
     def invoke(self):
         current_date = datetime.now()
-        queue = sqs.WorkerService(self._worker_put_queue, logger)
+        sess = boto3.Session()
         accounts = dynamodb.Service.get_accounts(
             self._app_get_table_name, current_date,
             self._dispatch_cooldown_sec, self._dispatch_count_limit
         )
 
         for account_id in accounts:
-            queue.enqueue(account_id)
+            queue = sqs.WorkerService(account_id, self._worker_put_queue, sess, logger)
+            queue.enqueue()
 
 
 def lambda_handler(event, context):

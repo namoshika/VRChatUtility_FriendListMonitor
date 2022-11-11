@@ -12,7 +12,7 @@ from configparser import ConfigParser
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Iterable, Tuple
-from common import dynamodb, entity
+from common import dynamodb, entity, sqs
 
 import schedule
 
@@ -375,23 +375,10 @@ class App:
         if is_moveworld and self._is_enabled_ewq:
             print(f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} ... Worker へキューイング")
             logger.info(f"Worker ({self._put_queue_name}) へキューイング")
-            self.enqueue_worker(self._put_queue_name, self._account_id, self.aws_sess)
+            srv = sqs.WorkerService(self._account_id, self._put_queue_name, self._aws_sess, logger)
+            srv.enqueue()
 
         logger.info(f"ログ解析処理を完了 ({count} 件)")
-
-    @staticmethod
-    def enqueue_worker(queue_name: str, account_id: str, aws_sess: boto3.Session):
-        job_info = {"user_id": account_id}
-        job_json = json.dumps(job_info, ensure_ascii=False)
-
-        sqs = aws_sess.resource("sqs")
-        vfe_queue = sqs.get_queue_by_name(QueueName=queue_name)
-        vfe_queue.send_message(
-            MessageBody=job_json,
-            MessageAttributes={
-                "Type": {"DataType": "String", "StringValue": "InvokeFunction"}
-            }
-        )
 
     @staticmethod
     def get_status(app_dir: Path, profile: str) -> dict[str, entity.LogParserStatus]:
