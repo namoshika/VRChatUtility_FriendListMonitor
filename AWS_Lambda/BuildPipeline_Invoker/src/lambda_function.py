@@ -77,7 +77,7 @@ class App:
             if commit_id_old is None or self.has_modified(commit_id_old, commit_id_new, path_pattern):
                 project_names.add(buld_project_name)
 
-        logger.info(f"invoke: ビルド処理を開始 (${project_names})")
+        logger.info(f"invoke: ビルド処理を開始 ({project_names=})")
         for buld_project_name in project_names:
             self.codebuild.start_build(projectName=buld_project_name)
 
