@@ -128,11 +128,7 @@ class App:
             latest_encount = self._dynamo.find_latest_activity(op.info_new, datetime_event)
 
             if latest_encount is not None:
-                # instance_id = latest_encount["instance_id"]
-                # timestamp = latest_encount["timestamp"]
-                # user_name = latest_encount["user_name"]
-                # world_id = latest_encount["world_id"]
-                world_name = latest_encount["world_name"]
+                world_name = latest_encount.world_name
             else:
                 world_name = "(不明)"
 

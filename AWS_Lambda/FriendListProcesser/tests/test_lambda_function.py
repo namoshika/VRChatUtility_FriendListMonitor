@@ -1,5 +1,6 @@
-import logging
+import boto3
 import json
+import logging
 import sys
 import os
 from datetime import datetime
@@ -73,8 +74,16 @@ class TestNotionResource:
 
 def test_handler_name_1():
     from src import lambda_function
+    from src.common import entity, dynamodb
 
     ACCOUNT_ID = os.getenv("ACCOUNT_ID")
+    APP_GET_TABLE_NAME = os.getenv("APP_GET_TABLE_NAME")
+    APP_PUT_TABLE_NAME = os.getenv("APP_PUT_TABLE_NAME")
+    dyn = dynamodb.Service(ACCOUNT_ID, APP_GET_TABLE_NAME, APP_PUT_TABLE_NAME, boto3.Session(), logger)
+    dyn.put_activity(entity.LogEventEnterPlayer(
+        entity.LogEventType.ENTER_PLAYER, datetime.fromtimestamp(1665694831),
+        "インスタンスID", "ワールドID", "ワールド名", "ユーザ表示名")
+    )
     events = {
         "Records": [
             {

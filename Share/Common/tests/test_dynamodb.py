@@ -196,4 +196,4 @@ class TestService:
         assert activity.world_id == "wrld_id"
         assert activity.world_name == "ワールド名"
         assert activity.user_display_name == "ユーザ表示名"
-        assert activity.timestamp == max_datetime
+        assert activity.timestamp == max_datetime.astimezone()

@@ -2,6 +2,7 @@ import boto3
 import logging
 import tempfile
 import time
+import zoneinfo
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from http.cookiejar import CookieJar, MozillaCookieJar
@@ -17,6 +18,7 @@ class AccountInfo:
 
 class Service:
     SUFFIX_LEN: int = 3
+    TZ_UTC = zoneinfo.ZoneInfo("UTC")
 
     def __init__(self, account_id: str, get_table_name: str, put_table_name: str, aws_sess: boto3.Session, logger: logging.Logger):
         self._account_id = account_id
@@ -185,8 +187,9 @@ class Service:
                 self._logger.warning("キャパシティ超過")
 
     def put_activity(self, activity: LogEvent) -> None:
-        timestamp_id = activity.timestamp.strftime("%Y%m%d_%H%M%S")
-        timestamp_text = activity.timestamp.strftime("%Y.%m.%d %H:%M:%S")
+        timestamp = activity.timestamp.astimezone()
+        timestamp_id = timestamp.astimezone(self.TZ_UTC).strftime("%Y%m%d_%H%M%S")
+        timestamp_text = timestamp.isoformat()
         # レコード有効期限を秒単位の UNIXTIME として生成
         expiration_time = datetime.now()
         expiration_time = expiration_time + timedelta(hours=24)
@@ -264,6 +267,7 @@ class Service:
 
     def find_latest_activity(self, target: FriendInfo, max_datetime: datetime) -> LogEventEnterPlayer:
         res = list()
+        max_datetime = max_datetime.astimezone().astimezone(self.TZ_UTC)
         for suffix in range(self.SUFFIX_LEN):
             max_datetime_txt = (max_datetime + timedelta(seconds=1)).strftime("%Y%m%d_%H%M%S")
             pk = f"#account:{self._account_id}#suffix:{suffix}"
@@ -284,7 +288,7 @@ class Service:
         res = res[0]
         res = LogEventEnterPlayer(
             LogEventType.ENTER_PLAYER,
-            datetime.strptime(res["timestamp"], "%Y.%m.%d %H:%M:%S"),
+            datetime.fromisoformat(res["timestamp"]),
             res["instance_id"],
             res["world_id"],
             res["world_name"],
