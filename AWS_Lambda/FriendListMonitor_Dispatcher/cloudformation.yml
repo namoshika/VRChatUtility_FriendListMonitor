@@ -7,6 +7,9 @@ Parameters:
   AppTableName: {Type: String}
   WorkerQueue: {Type: String}
 
+Conditions:
+  IsProd: !Equals [prd, !Ref EnvType]
+
 Resources:
   LambdaFunction:
     Type: AWS::Serverless::Function
@@ -37,7 +40,7 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Name: !Sub vrcu-${EnvType}-FriendListMonitor-eventrule
-      State: ENABLED
+      State: !If [IsProd, ENABLED, DISABLED]
       ScheduleExpression: cron(0 9,21 ? * * *)
       Targets: 
         - Id: InvokeFriendListMonitor
