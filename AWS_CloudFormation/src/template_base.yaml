@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
@@ -103,7 +103,11 @@ Resources:
             Version: 2012-10-17
             Statement:
               - { Effect: Allow, Action: codebuild:*, Resource: "*" }
-              - { Effect: Allow, Action: codecommit:GetDifferences, Resource: !Ref AppRepoArn }
+              - {
+                  Effect: Allow,
+                  Action: codecommit:GetDifferences,
+                  Resource: !Ref AppRepoArn,
+                }
 
   IamRoleCodeBuild:
     Type: AWS::IAM::Role
@@ -158,7 +162,11 @@ Resources:
         Type: LINUX_CONTAINER
         EnvironmentVariables:
           - { Name: ENV_TYPE, Type: PLAINTEXT, Value: !Ref EnvType }
-          - { Name: STACK_NAME, Type: PLAINTEXT, Value: !Sub "vrcu-${EnvType}-FriendListMonitor-Dispatcher" }
+          - {
+              Name: STACK_NAME,
+              Type: PLAINTEXT,
+              Value: !Sub "vrcu-${EnvType}-FriendListMonitor-Dispatcher",
+            }
       Source:
         Type: CODECOMMIT
         Location: !Ref AppRepoUrl
@@ -185,7 +193,11 @@ Resources:
         Type: LINUX_CONTAINER
         EnvironmentVariables:
           - { Name: ENV_TYPE, Type: PLAINTEXT, Value: !Ref EnvType }
-          - { Name: STACK_NAME, Type: PLAINTEXT, Value: !Sub "vrcu-${EnvType}-FriendListMonitor-Worker" }
+          - {
+              Name: STACK_NAME,
+              Type: PLAINTEXT,
+              Value: !Sub "vrcu-${EnvType}-FriendListMonitor-Worker",
+            }
       Source:
         Type: CODECOMMIT
         Location: !Ref AppRepoUrl
@@ -212,7 +224,11 @@ Resources:
         Type: LINUX_CONTAINER
         EnvironmentVariables:
           - { Name: ENV_TYPE, Type: PLAINTEXT, Value: !Ref EnvType }
-          - { Name: STACK_NAME, Type: PLAINTEXT, Value: !Sub "vrcu-${EnvType}-FriendListProcesser" }
+          - {
+              Name: STACK_NAME,
+              Type: PLAINTEXT,
+              Value: !Sub "vrcu-${EnvType}-FriendListProcesser",
+            }
       Source:
         Type: CODECOMMIT
         Location: !Ref AppRepoUrl
@@ -237,7 +253,7 @@ Resources:
         resources: [!Ref AppRepoArn]
         detail:
           event: [referenceUpdated]
-      Targets: 
+      Targets:
         - Id: InvokeBuildPipeline
           Arn: !GetAtt LambdaBuildPipeline.Arn
 
@@ -370,8 +386,8 @@ Resources:
     DeletionPolicy: Delete
     Properties:
       QueueName: !Sub vrcu-${EnvType}-FriendListMonitor_Worker-sqs
-      VisibilityTimeout: 180
-      MessageRetentionPeriod: 345600
+      VisibilityTimeout: 3600 # 1時間
+      MessageRetentionPeriod: 10800 # 3時間
 
   SqsFriendListMonitorWorkerPolicy:
     Type: AWS::SQS::QueuePolicy
@@ -398,8 +414,20 @@ Resources:
     DeletionPolicy: Delete
     Properties:
       QueueName: !Sub vrcu-${EnvType}-FriendListProcesser-sqs
-      VisibilityTimeout: 180
-      MessageRetentionPeriod: 345600
+      VisibilityTimeout: 600 # 10分
+      MessageRetentionPeriod: 259200 # 3日間
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SqsFriendListProcesserDlq.Arn
+        maxReceiveCount: 3
+
+  SqsFriendListProcesserDlq:
+    Type: AWS::SQS::Queue
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Properties:
+      QueueName: !Sub vrcu-${EnvType}-FriendListProcesser-sqs-dls
+      VisibilityTimeout: 30 # 30秒
+      MessageRetentionPeriod: 259200 # 3日間
 
   SqsFriendListProcesserPolicy:
     Type: AWS::SQS::QueuePolicy
@@ -410,7 +438,7 @@ Resources:
         Statement:
           - Sid: Stmt1661786681160
             Effect: Allow
-            Principal: "*"
+            Principal: { AWS: !Ref AWS::AccountId }
             Action:
               - sqs:DeleteMessage
               - sqs:GetQueueAttributes
@@ -419,3 +447,22 @@ Resources:
             Resource: !GetAtt SqsFriendListProcesser.Arn
       Queues:
         - !Ref SqsFriendListProcesser
+
+  SqsFriendListProcesserDlqPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Id: Policy1661786687182
+        Statement:
+          - Sid: Stmt1661786681160
+            Effect: Allow
+            Principal: { AWS: !Ref AWS::AccountId }
+            Action:
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:ReceiveMessage
+              - sqs:SendMessage
+            Resource: !GetAtt SqsFriendListProcesserDlq.Arn
+      Queues:
+        - !Ref SqsFriendListProcesserDlq
