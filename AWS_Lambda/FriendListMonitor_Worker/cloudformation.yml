@@ -1,12 +1,13 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
-  EnvType: {Type: String, AllowedValues: [prd, dev]}
-  LambdaFunctionRole: {Type: String}
-  AppTableName: {Type: String}
-  ProcesserQueue: {Type: String}
-  WorkerQueueArn: {Type: String}
+  EnvType: { Type: String, AllowedValues: [prd, dev] }
+  LambdaFunctionRole: { Type: String }
+  AppTableName: { Type: String }
+  ProcesserQueue: { Type: String }
+  WorkerQueueArn: { Type: String }
+  IncidentTopicArn: { Type: String }
 
 Resources:
   LambdaFunction:
@@ -23,6 +24,9 @@ Resources:
           APP_GET_TABLE_NAME: !Ref AppTableName
           APP_PUT_TABLE_NAME: !Ref AppTableName
           PROCESSER_PUT_QUEUE: !Ref ProcesserQueue
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   LambdaPolicy:
     Type: AWS::Lambda::Permission
@@ -38,3 +42,20 @@ Resources:
       Enabled: True
       FunctionName: !Ref LambdaFunction
       EventSourceArn: !Ref WorkerQueueArn
+
+  CloudWatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub vrcu-${EnvType}-FriendListMonitor_Worker-alarm-err
+      AlarmActions:
+        - !Ref IncidentTopicArn
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Unit: Count
+      Dimensions:
+        - { Name: FunctionName, Value: !Ref LambdaFunction }
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      Statistic: Sum
+      ComparisonOperator: GreaterThanOrEqualToThreshold

@@ -6,6 +6,7 @@ env:
     APP_TABLE_NAME: /vrcu/${ENV_TYPE}/dynamodb-appdb
     PROCESSER_QUEUE: /vrcu/${ENV_TYPE}/sqs-processer
     WORKER_QUEUE_ARN: /vrcu/${ENV_TYPE}/sqs-worker-arn
+    INCIDENT_TOPIC_ARN: /vrcu/${ENV_TYPE}/sns-topic-incident-arn
     TMP_S3_BUCKET: /vrcu/${ENV_TYPE}/s3-bucket
     TMP_S3_PREFIX: /vrcu/${ENV_TYPE}/s3-prefix
 
@@ -16,4 +17,4 @@ phases:
   build:
     commands:
       - aws cloudformation package --template-file AWS_Lambda/FriendListMonitor_Worker/cloudformation.yml --s3-bucket $TMP_S3_BUCKET --s3-prefix $TMP_S3_PREFIX --output-template-file AWS_Lambda/FriendListMonitor_Worker/cloudformation_packaged.yml
-      - aws cloudformation deploy --template-file AWS_Lambda/FriendListMonitor_Worker/cloudformation_packaged.yml --stack-name $STACK_NAME --parameter-overrides LambdaFunctionRole=$(eval echo $LAMBDA_ROLE) EnvType=$ENV_TYPE AppTableName=$(eval echo $APP_TABLE_NAME) ProcesserQueue=$(eval echo $PROCESSER_QUEUE) WorkerQueueArn=$(eval echo $WORKER_QUEUE_ARN)
+      - aws cloudformation deploy --template-file AWS_Lambda/FriendListMonitor_Worker/cloudformation_packaged.yml --stack-name $STACK_NAME --parameter-overrides LambdaFunctionRole=$(eval echo $LAMBDA_ROLE) EnvType=$ENV_TYPE AppTableName=$(eval echo $APP_TABLE_NAME) ProcesserQueue=$(eval echo $PROCESSER_QUEUE) WorkerQueueArn=$(eval echo $WORKER_QUEUE_ARN) IncidentTopicArn=$(eval echo $INCIDENT_TOPIC_ARN)

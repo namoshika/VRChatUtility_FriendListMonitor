@@ -157,6 +157,7 @@ Resources:
                 Condition:
                   StringEquals:
                     iam:PassedToService: lambda.amazonaws.com
+              - { Effect: Allow, Action: cloudwatch:*, Resource: "*" }
               - { Effect: Allow, Action: codebuild:*, Resource: "*" }
               - { Effect: Allow, Action: events:*, Resource: "*" }
               - { Effect: Allow, Action: lambda:*, Resource: "*" }
@@ -322,9 +323,9 @@ Resources:
           ENV_TYPE: !Ref EnvType
           APP_REPOSITORY_NAME: !Ref AppRepoName
           APP_REPOSITORY_REF: !Ref AppRepoRef
-      # Tags:
-      #   - { Key: EnvType, Value: !Ref EnvType }
-      #   - { Key: Service, Value: VRChatUtility }
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   LambdaBuildPipelinePolicy:
     Type: AWS::Lambda::Permission
@@ -444,6 +445,16 @@ Resources:
         EnvType: !Ref EnvType
         Service: VRChatUtility
 
+  ParamSnsTopicIncidentArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /vrcu/${EnvType}/sns-topic-incident-arn
+      Type: String
+      Value: !Ref SnsTopicIncident
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
+
   SqsFriendListMonitorWorker:
     Type: AWS::SQS::Queue
     UpdateReplacePolicy: Delete
@@ -539,3 +550,11 @@ Resources:
             Resource: !GetAtt SqsFriendListProcesserDlq.Arn
       Queues:
         - !Ref SqsFriendListProcesserDlq
+
+  SnsTopicIncident:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub vrcu-${EnvType}-topic
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }

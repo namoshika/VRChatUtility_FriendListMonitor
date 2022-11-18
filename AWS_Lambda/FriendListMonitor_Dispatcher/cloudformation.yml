@@ -1,11 +1,12 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
-  EnvType: {Type: String, AllowedValues: [prd, dev]}
-  LambdaFunctionRole: {Type: String}
-  AppTableName: {Type: String}
-  WorkerQueue: {Type: String}
+  EnvType: { Type: String, AllowedValues: [prd, dev] }
+  LambdaFunctionRole: { Type: String }
+  AppTableName: { Type: String }
+  WorkerQueue: { Type: String }
+  IncidentTopicArn: { Type: String }
 
 Conditions:
   IsProd: !Equals [prd, !Ref EnvType]
@@ -27,6 +28,9 @@ Resources:
           WORKER_PUT_QUEUE: !Ref WorkerQueue
           DISPATCH_COOLDOWN_SEC: 60
           DISPATCH_COUNT_LIMIT: 100
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   LambdaPolicy:
     Type: AWS::Lambda::Permission
@@ -42,6 +46,23 @@ Resources:
       Name: !Sub vrcu-${EnvType}-FriendListMonitor-eventrule
       State: !If [IsProd, ENABLED, DISABLED]
       ScheduleExpression: cron(0 9,21 ? * * *)
-      Targets: 
+      Targets:
         - Id: InvokeFriendListMonitor
           Arn: !GetAtt LambdaFunction.Arn
+
+  CloudWatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub vrcu-${EnvType}-FriendListMonitor_Dispatcher-alarm-err
+      AlarmActions:
+        - !Ref IncidentTopicArn
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Unit: Count
+      Dimensions:
+        - { Name: FunctionName, Value: !Ref LambdaFunction }
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      Statistic: Sum
+      ComparisonOperator: GreaterThanOrEqualToThreshold
