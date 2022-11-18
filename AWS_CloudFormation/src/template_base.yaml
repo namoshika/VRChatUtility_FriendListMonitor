@@ -24,6 +24,9 @@ Resources:
               - ssm:GetParameters
               - ssm:GetParametersByPath
             Resource: arn:aws:ssm:*:*:parameter/vrcu/*
+      # Tags:
+      #   - { Key: EnvType, Value: !Ref EnvType }
+      #   - { Key: Service, Value: VRChatUtility }
 
   IamPolicyLogging:
     Type: AWS::IAM::ManagedPolicy
@@ -44,6 +47,9 @@ Resources:
               - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/vrcu/${EnvType}/buildpipeline:log-stream:*
             Action:
               - logs:PutLogEvents
+      # Tags:
+      #   - { Key: EnvType, Value: !Ref EnvType }
+      #   - { Key: Service, Value: VRChatUtility }
 
   IamRoleAppLambda:
     Type: AWS::IAM::Role
@@ -83,6 +89,9 @@ Resources:
                   - sqs:GetQueueUrl
                   - sqs:SendMessage
                   - sqs:DeleteMessage
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }
 
   IamRoleBuildLambda:
     Type: AWS::IAM::Role
@@ -108,6 +117,9 @@ Resources:
                   Action: codecommit:GetDifferences,
                   Resource: !Ref AppRepoArn,
                 }
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }
 
   IamRoleCodeBuild:
     Type: AWS::IAM::Role
@@ -148,6 +160,9 @@ Resources:
               - { Effect: Allow, Action: codebuild:*, Resource: "*" }
               - { Effect: Allow, Action: events:*, Resource: "*" }
               - { Effect: Allow, Action: lambda:*, Resource: "*" }
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }
 
   CodeBuildFriendListMonitorDispatcher:
     Type: AWS::CodeBuild::Project
@@ -179,6 +194,9 @@ Resources:
           Status: ENABLED
           GroupName: !Sub /vrcu/${EnvType}/buildpipeline
           StreamName: FriendListMonitor-Dispatcher
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }
 
   CodeBuildFriendListMonitorWorker:
     Type: AWS::CodeBuild::Project
@@ -210,6 +228,9 @@ Resources:
           Status: ENABLED
           GroupName: !Sub /vrcu/${EnvType}/buildpipeline
           StreamName: FriendListMonitor-Worker
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }
 
   CodeBuildFriendListProcesser:
     Type: AWS::CodeBuild::Project
@@ -241,6 +262,9 @@ Resources:
           Status: ENABLED
           GroupName: !Sub /vrcu/${EnvType}/buildpipeline
           StreamName: FriendListProcesser
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }
 
   EventRuleBuildPipeline:
     Type: AWS::Events::Rule
@@ -256,6 +280,9 @@ Resources:
       Targets:
         - Id: InvokeBuildPipeline
           Arn: !GetAtt LambdaBuildPipeline.Arn
+      # Tags:
+      #   - { Key: EnvType, Value: !Ref EnvType }
+      #   - { Key: Service, Value: VRChatUtility }
 
   DynamoDbApp:
     Type: AWS::DynamoDB::Table
@@ -278,6 +305,7 @@ Resources:
         Enabled: true
         AttributeName: expiration_time
       Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
         - { Key: Service, Value: VRChatUtility }
 
   LambdaBuildPipeline:
@@ -294,6 +322,9 @@ Resources:
           ENV_TYPE: !Ref EnvType
           APP_REPOSITORY_NAME: !Ref AppRepoName
           APP_REPOSITORY_REF: !Ref AppRepoRef
+      # Tags:
+      #   - { Key: EnvType, Value: !Ref EnvType }
+      #   - { Key: Service, Value: VRChatUtility }
 
   LambdaBuildPipelinePolicy:
     Type: AWS::Lambda::Permission
@@ -309,6 +340,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/role-exec-lambda
       Type: String
       Value: !GetAtt IamRoleAppLambda.Arn
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamCodeBuildPathMapping01:
     Type: AWS::SSM::Parameter
@@ -316,6 +350,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/build-project-mapping/vrcu-${EnvType}-FriendListMonitor-Dispatcher-codebuild
       Type: String
       Value: AWS_Lambda/FriendListMonitor_Dispatcher/
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamCodeBuildPathMapping02:
     Type: AWS::SSM::Parameter
@@ -323,6 +360,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/build-project-mapping/vrcu-${EnvType}-FriendListMonitor-Worker-codebuild
       Type: String
       Value: AWS_Lambda/FriendListMonitor_Worker/
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamCodeBuildPathMapping03:
     Type: AWS::SSM::Parameter
@@ -330,6 +370,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/build-project-mapping/vrcu-${EnvType}-FriendListProcesser-codebuild
       Type: String
       Value: AWS_Lambda/FriendListProcesser/
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamDynamoDbAppTable:
     Type: AWS::SSM::Parameter
@@ -337,6 +380,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/dynamodb-appdb
       Type: String
       Value: !Ref DynamoDbApp
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamS3TmpBucket:
     Type: AWS::SSM::Parameter
@@ -344,6 +390,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/s3-bucket
       Type: String
       Value: !Ref TempS3Bucket
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamS3TmpPrefix:
     Type: AWS::SSM::Parameter
@@ -351,6 +400,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/s3-prefix
       Type: String
       Value: !Ref TempS3Prefix
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamSqsWorker:
     Type: AWS::SSM::Parameter
@@ -358,6 +410,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/sqs-worker
       Type: String
       Value: !GetAtt SqsFriendListMonitorWorker.QueueName
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamSqsWorkerArn:
     Type: AWS::SSM::Parameter
@@ -365,6 +420,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/sqs-worker-arn
       Type: String
       Value: !GetAtt SqsFriendListMonitorWorker.Arn
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamSqsProcesser:
     Type: AWS::SSM::Parameter
@@ -372,6 +430,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/sqs-processer
       Type: String
       Value: !GetAtt SqsFriendListProcesser.QueueName
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   ParamSqsProcesserArn:
     Type: AWS::SSM::Parameter
@@ -379,6 +440,9 @@ Resources:
       Name: !Sub /vrcu/${EnvType}/sqs-processer-arn
       Type: String
       Value: !GetAtt SqsFriendListProcesser.Arn
+      Tags:
+        EnvType: !Ref EnvType
+        Service: VRChatUtility
 
   SqsFriendListMonitorWorker:
     Type: AWS::SQS::Queue
@@ -388,6 +452,9 @@ Resources:
       QueueName: !Sub vrcu-${EnvType}-FriendListMonitor_Worker-sqs
       VisibilityTimeout: 3600 # 1時間
       MessageRetentionPeriod: 10800 # 3時間
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }
 
   SqsFriendListMonitorWorkerPolicy:
     Type: AWS::SQS::QueuePolicy
@@ -419,6 +486,9 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt SqsFriendListProcesserDlq.Arn
         maxReceiveCount: 3
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }
 
   SqsFriendListProcesserDlq:
     Type: AWS::SQS::Queue
@@ -428,6 +498,9 @@ Resources:
       QueueName: !Sub vrcu-${EnvType}-FriendListProcesser-sqs-dls
       VisibilityTimeout: 30 # 30秒
       MessageRetentionPeriod: 259200 # 3日間
+      Tags:
+        - { Key: EnvType, Value: !Ref EnvType }
+        - { Key: Service, Value: VRChatUtility }
 
   SqsFriendListProcesserPolicy:
     Type: AWS::SQS::QueuePolicy
