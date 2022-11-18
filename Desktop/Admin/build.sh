@@ -10,4 +10,4 @@ pip install -r requirements.txt -t obj
 rm --recursive obj/boto3* obj/botocore*
 
 mkdir -p dist/
-python -m zipapp obj/ -o dist/vcuadmin.pyz
+python -m zipapp obj/ -o dist/vrcu.pyz
