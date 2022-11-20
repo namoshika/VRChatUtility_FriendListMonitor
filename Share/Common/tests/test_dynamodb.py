@@ -157,43 +157,51 @@ class TestService:
         )
 
         # アクティビティを登録
-        log_type = src.dynamodb.LogEventType.ENTER_WORLD
-        log_item = src.dynamodb.LogEventEnterWorld(
-            log_type, datetime.datetime(2012, 1, 23, 1, 23, 45), "inst_id", "wrld_id", "ワールド名")
-        store.put_activity(log_item)
+        log_type_1 = src.dynamodb.LogEventType.ENTER_WORLD
+        log_time_1 = datetime.datetime(2012, 1, 23, 1, 23, 45)
+        log_item_1 = src.dynamodb.LogEventEnterWorld(log_type_1, log_time_1, "inst_id", "wrld_id", "ワールド名")
+        store.put_activity(log_item_1)
 
-        log_type = src.dynamodb.LogEventType.LEFT_WORLD
-        log_item = src.dynamodb.LogEventLeftWorld(
-            log_type, datetime.datetime(2012, 1, 23, 1, 23, 45), "inst_id", "wrld_id", "ワールド名")
-        store.put_activity(log_item)
+        log_type_2 = src.dynamodb.LogEventType.LEFT_WORLD
+        log_time_2 = datetime.datetime(2012, 1, 23, 1, 23, 45)
+        log_item_2 = src.dynamodb.LogEventLeftWorld(log_type_2, log_time_2, "inst_id", "wrld_id", "ワールド名")
+        store.put_activity(log_item_2)
 
-        log_type = src.dynamodb.LogEventType.ENTER_PLAYER
-        log_item = src.dynamodb.LogEventEnterPlayer(
-            log_type, datetime.datetime(2012, 1, 23, 1, 23, 45), "inst_id", "wrld_id", "ワールド名", "ユーザ表示名")
-        store.put_activity(log_item)
+        # 始端境界値 (外)
+        log_type_3 = src.dynamodb.LogEventType.ENTER_PLAYER
+        log_time_3 = datetime.datetime(2012, 1, 22, 19, 24, 44)
+        log_item_3 = src.dynamodb.LogEventEnterPlayer(log_type_3, log_time_3, "inst_id_1", "wrld_id_1", "ワールド名_1", "ユーザ表示名")
+        store.put_activity(log_item_3)
 
-        log_type = src.dynamodb.LogEventType.ENTER_PLAYER
-        log_item = src.dynamodb.LogEventEnterPlayer(
-            log_type, datetime.datetime(2012, 1, 23, 1, 24, 45), "inst_id", "wrld_id", "ワールド名", "ユーザ表示名")
-        store.put_activity(log_item)
+        # 始端境界値 (内)
+        log_type_4 = src.dynamodb.LogEventType.ENTER_PLAYER
+        log_time_4 = datetime.datetime(2012, 1, 22, 19, 24, 45)
+        log_item_4 = src.dynamodb.LogEventEnterPlayer(log_type_4, log_time_4, "inst_id_2", "wrld_id_2", "ワールド名_2", "ユーザ表示名")
+        store.put_activity(log_item_4)
 
-        log_type = src.dynamodb.LogEventType.ENTER_PLAYER
-        log_item = src.dynamodb.LogEventEnterPlayer(
-            log_type, datetime.datetime(2012, 1, 23, 1, 25, 45), "inst_id", "wrld_id", "ワールド名", "ユーザ表示名")
-        store.put_activity(log_item)
+        # 終端境界値 (内)
+        log_type_5 = src.dynamodb.LogEventType.ENTER_PLAYER
+        log_time_5 = datetime.datetime(2012, 1, 23, 1, 24, 45)
+        log_item_5 = src.dynamodb.LogEventEnterPlayer(log_type_5, log_time_5, "inst_id_3", "wrld_id_3", "ワールド名_3", "ユーザ表示名")
+        store.put_activity(log_item_5)
 
-        log_type = src.dynamodb.LogEventType.LEFT_PLAYER
-        log_item = src.dynamodb.LogEventLeftPlayer(
-            log_type, datetime.datetime(2012, 1, 23, 1, 23, 45), "inst_id", "wrld_id", "ワールド名", "ユーザ表示名")
-        store.put_activity(log_item)
+        log_type_6 = src.dynamodb.LogEventType.ENTER_PLAYER
+        log_time_6 = datetime.datetime(2012, 1, 23, 1, 25, 45)
+        log_item_6 = src.dynamodb.LogEventEnterPlayer(log_type_6, log_time_6, "inst_id_4", "wrld_id_4", "ワールド名_4", "ユーザ表示名")
+        store.put_activity(log_item_6)
+
+        log_type_7 = src.dynamodb.LogEventType.LEFT_PLAYER
+        log_time_7 = datetime.datetime(2012, 1, 23, 1, 23, 45)
+        log_item_7 = src.dynamodb.LogEventLeftPlayer(log_type_7, log_time_7, "inst_id_5", "wrld_id_5", "ワールド名_5", "ユーザ表示名")
+        store.put_activity(log_item_7)
 
         # アクティビティを検索
         friend_info = src.dynamodb.FriendInfo("ユーザ名", "ユーザ名", "ユーザ表示名", 0, 0)
         max_datetime = datetime.datetime(2012, 1, 23, 1, 24, 45)
-        activity = store.find_latest_activity(friend_info, max_datetime)
+        activity = store.find_first_activity(friend_info, max_datetime)
         assert activity.type == src.dynamodb.LogEventType.ENTER_PLAYER
-        assert activity.instance_id == "inst_id"
-        assert activity.world_id == "wrld_id"
-        assert activity.world_name == "ワールド名"
+        assert activity.instance_id == "inst_id_2"
+        assert activity.world_id == "wrld_id_2"
+        assert activity.world_name == "ワールド名_2"
         assert activity.user_display_name == "ユーザ表示名"
-        assert activity.timestamp == max_datetime.astimezone()
+        assert activity.timestamp == log_time_4.astimezone()

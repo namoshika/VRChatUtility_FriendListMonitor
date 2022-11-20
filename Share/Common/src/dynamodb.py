@@ -265,23 +265,24 @@ class Service:
                     self._logger.warning("DynamoDB 書き込みでキャパシティ超過を起因とした複数回のエラーが発生 (10秒後に再試行).")
                     time.sleep(10)
 
-    def find_latest_activity(self, target: FriendInfo, max_datetime: datetime) -> LogEventEnterPlayer:
+    def find_first_activity(self, target: FriendInfo, max_datetime: datetime, delta: timedelta = timedelta(hours=6)) -> LogEventEnterPlayer:
         res = list()
         max_datetime = max_datetime.astimezone().astimezone(self.TZ_UTC)
         for suffix in range(self.SUFFIX_LEN):
+            min_datetime_txt = (max_datetime - delta).strftime("%Y%m%d_%H%M%S")
             max_datetime_txt = (max_datetime + timedelta(seconds=1)).strftime("%Y%m%d_%H%M%S")
             pk = f"#account:{self._account_id}#suffix:{suffix}"
-            sk1 = f"#activity:user.enter.{target.user_display_name}#timestamp:00000000_000000"
+            sk1 = f"#activity:user.enter.{target.user_display_name}#timestamp:{min_datetime_txt}"
             sk2 = f"#activity:user.enter.{target.user_display_name}#timestamp:{max_datetime_txt}"
             res_api = self._get_table.query(
                 Select="ALL_ATTRIBUTES",
                 KeyConditionExpression=Key("pk").eq(pk) & Key("sk").between(sk1, sk2),
-                ScanIndexForward=False,
+                ScanIndexForward=True,
                 Limit=1
             )
             res.extend(res_api["Items"])
 
-        res = list(sorted(res, key=lambda val: val["timestamp"], reverse=True))
+        res = list(sorted(res, key=lambda val: val["timestamp"], reverse=False))
         if len(res) == 0:
             return None
 

@@ -125,7 +125,7 @@ class App:
     def invoke(self, op: entity.OperationInfo):
         if op.action == entity.ActionType.ADD:
             datetime_event = datetime.fromtimestamp(op.info_new.update_date)
-            latest_encount = self._dynamo.find_latest_activity(op.info_new, datetime_event)
+            latest_encount = self._dynamo.find_first_activity(op.info_new, datetime_event)
 
             if latest_encount is not None:
                 world_name = latest_encount.world_name
