@@ -69,8 +69,9 @@ class FriendManager:
 
 class JobManager:
     def enqueue_worker(self, account: str, queue: str):
-        client = sqs.WorkerService(queue, logger)
-        client.enqueue(account)
+        sess = boto3.Session()
+        client = sqs.WorkerService(account, queue, sess, logger)
+        client.enqueue()
 
 class App:
     def __init__(self):
