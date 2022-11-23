@@ -70,7 +70,7 @@ class VRChatLogReader:
     REGEX_ENTER_WORLD_01 = re.compile(
         r"^(?P<Timestamp>\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2})[^-]+-  \[Behaviour\] Entering Room: (?P<WorldName>[^\n]+)")
     REGEX_ENTER_WORLD_02 = re.compile(
-        r"^(?P<Timestamp>\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2})[^-]+-  \[Behaviour\] Joining (?P<WorldId>wrld_[^:]+):(?P<InstanceId>[^\n]+)")
+        r"^(?P<Timestamp>\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2})[^-]+-  \[Behaviour\] Joining (?P<WorldId>(?:wrld_[^:]+)|(?:local)):(?P<InstanceId>[^\n]+)")
     REGEX_PLAYER_JOINED = re.compile(
         r"^(?P<Timestamp>\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2})[^-]+-  \[Behaviour\] OnPlayerJoined (?P<UserName>[^\n]+)")
     REGEX_INITIALIZED_API = re.compile(
