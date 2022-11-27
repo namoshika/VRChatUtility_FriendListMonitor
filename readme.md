@@ -68,7 +68,7 @@ poetry install --no-root
 # Usage
 
 ```bash
-# VRChat を起動した後に起動して使用
+# VRChat を起動した後に Desktop/EventExtractor を起動して使用
 # --profile {PROFILE_NAME} を通して setting.ini の
 # 指定した [profile.{PROFILE_NAME}] セクションを選択できます。
 poetry run python src/main.py --profile sample --watch
