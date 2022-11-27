@@ -20,7 +20,7 @@ class NotionResource:
         if record is None:
             return self._inline_append(target_info, op.action == entity.ActionType.REMOVE, location)
         else:
-            return self._inline_update(target_info, op.action == entity.ActionType.REMOVE, record)
+            return self._inline_update(target_info, op.action == entity.ActionType.REMOVE, location, record)
 
     def _inline_find(self, user_id) -> dict:
         # 更新対象のレコードを取得
@@ -55,7 +55,7 @@ class NotionResource:
                 },
                 "location": {
                     "type": "rich_text",
-                    "rich_text": [{"type": "text", "text": {"content": location}}]
+                    "rich_text": [{"type": "text", "text": {"content": location or "(不明)"}}]
                 },
                 "regist_date": {
                     "type": "date",
@@ -73,7 +73,7 @@ class NotionResource:
         })
         return res
 
-    def _inline_update(self, value: entity.FriendInfo, mark_as_removed: bool, page_obj: dict) -> dict:
+    def _inline_update(self, value: entity.FriendInfo, mark_as_removed: bool, location: str, page_obj: dict) -> dict:
         # レコードの情報を取得
         page_id = page_obj["id"]
         page_props = page_obj["properties"]

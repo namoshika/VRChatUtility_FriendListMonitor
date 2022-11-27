@@ -61,9 +61,9 @@ class TestNotionResource:
 
         now_time = int(datetime.now().timestamp())
         val = entity.FriendInfo("user_id_02", "user_name_02", "user_display_name_02", now_time, now_time)
-        res1 = client._inline_update(val, True, res1)
+        res1 = client._inline_update(val, True, None, res1)
         assert res1 is not None
-        res2 = client._inline_update(val, False, res2)
+        res2 = client._inline_update(val, False, None, res2)
         assert res2 is not None
 
         res1 = client._inline_delete(res1["id"])
