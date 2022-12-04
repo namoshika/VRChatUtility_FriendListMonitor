@@ -75,15 +75,15 @@ class TestService:
         )
 
         # フレンド情報を登録
-        friend_info_1a = src.dynamodb.FriendInfo("ユーザID1", "ユーザ名1", "ユーザ表示名1", 0, 0)
+        friend_info_1a = src.dynamodb.UserInfo("ユーザID1", "ユーザ名1", "ユーザ表示名1", 0, 0)
         op = src.dynamodb.OperationInfo(src.dynamodb.ActionType.ADD, friend_info_1a, None)
         store.put_friend(op)
 
-        friend_info_2a = src.dynamodb.FriendInfo("ユーザID2", "ユーザ名2", "ユーザ表示名2", 0, 0)
+        friend_info_2a = src.dynamodb.UserInfo("ユーザID2", "ユーザ名2", "ユーザ表示名2", 0, 0)
         op = src.dynamodb.OperationInfo(src.dynamodb.ActionType.ADD, friend_info_2a, None)
         store.put_friend(op)
 
-        friend_info_3a = src.dynamodb.FriendInfo("ユーザID3", "ユーザ名3", "ユーザ表示名3", 0, 0)
+        friend_info_3a = src.dynamodb.UserInfo("ユーザID3", "ユーザ名3", "ユーザ表示名3", 0, 0)
         op = src.dynamodb.OperationInfo(src.dynamodb.ActionType.ADD, friend_info_3a, None)
         store.put_friend(op)
 
@@ -110,7 +110,7 @@ class TestService:
         assert res[2].update_date == friend_info_3a.update_date
 
         # フレンド情報を更新
-        friend_info_1b = src.dynamodb.FriendInfo("ユーザID1", "ユーザ名1 (更新後)", "ユーザ表示名1 (更新後)", 0, 0)
+        friend_info_1b = src.dynamodb.UserInfo("ユーザID1", "ユーザ名1 (更新後)", "ユーザ表示名1 (更新後)", 0, 0)
         op = src.dynamodb.OperationInfo(src.dynamodb.ActionType.UPDATE, friend_info_1b, friend_info_1a)
         store.put_friend(op)
 
@@ -196,7 +196,7 @@ class TestService:
         store.put_activity(log_item_7)
 
         # アクティビティを検索
-        friend_info = src.dynamodb.FriendInfo("ユーザ名", "ユーザ名", "ユーザ表示名", 0, 0)
+        friend_info = src.dynamodb.UserInfo("ユーザ名", "ユーザ名", "ユーザ表示名", 0, 0)
         max_datetime = datetime.datetime(2012, 1, 23, 1, 24, 45)
         activity = store.find_first_activity(friend_info, max_datetime)
         assert activity.type == src.dynamodb.LogEventType.ENTER_PLAYER

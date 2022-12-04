@@ -28,7 +28,7 @@ class VRChatLogErrorType(Enum):
 
 
 @dataclass
-class FriendInfo:
+class UserInfo:
     user_id: str
     user_name: str
     user_display_name: str
@@ -45,7 +45,7 @@ class FriendInfo:
 
     @staticmethod
     def from_dict(value: dict[str, str]):
-        return FriendInfo(
+        return UserInfo(
             value["user_id"],
             value["user_name"],
             value["user_display_name"],
@@ -56,8 +56,8 @@ class FriendInfo:
 @dataclass
 class OperationInfo:
     action: ActionType
-    info_new: FriendInfo
-    info_old: FriendInfo
+    info_new: UserInfo
+    info_old: UserInfo
 
 
 @dataclass
@@ -135,9 +135,9 @@ class VRChatLogError(Exception):
 
 class CustomJsonEncoder(json.JSONEncoder):
     def default(self, o):
-        if isinstance(o, FriendInfo):
+        if isinstance(o, UserInfo):
             return {
-                "_type": "FriendInfo",
+                "_type": "UserInfo",
                 "user_id": o.user_id,
                 "user_name": o.user_name,
                 "user_display_name": o.user_display_name,
@@ -168,7 +168,7 @@ class CustomJsonDecoder(json.JSONDecoder):
             return o
 
         typ = o["_type"]
-        if typ == "FriendInfo":
-            return FriendInfo(o["user_id"], o["user_name"], o["user_display_name"], o["regist_date"], o["update_date"])
+        if typ == "UserInfo":
+            return UserInfo(o["user_id"], o["user_name"], o["user_display_name"], o["regist_date"], o["update_date"])
         if typ == "OperationInfo":
             return OperationInfo(self.ACTION_TYPE_DICT[o["action"]], o["info_new"], o["info_old"])

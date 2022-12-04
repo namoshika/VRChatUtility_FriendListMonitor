@@ -25,16 +25,16 @@ class App:
             self._sqs.enqueue(item)
         
 
-def extract_change_friends(infos_old: list[entity.FriendInfo], infos_new: list[entity.FriendInfo], update_date: datetime) -> Iterable[entity.OperationInfo]:
+def extract_change_friends(infos_old: list[entity.UserInfo], infos_new: list[entity.UserInfo], update_date: datetime) -> Iterable[entity.OperationInfo]:
     i_old, i_new = 0, 0
     while i_old < len(infos_old) or i_new < len(infos_new):
-        info_old_dt: entity.FriendInfo = None
+        info_old_dt: entity.UserInfo = None
         info_old_id = "zzz"
         if i_old < len(infos_old):
             info_old_dt = infos_old[i_old]
             info_old_id = info_old_dt.user_id
 
-        info_new_dt: entity.FriendInfo = None
+        info_new_dt: entity.UserInfo = None
         info_new_id = "zzz"
         if i_new < len(infos_new):
             info_new_dt = infos_new[i_new]

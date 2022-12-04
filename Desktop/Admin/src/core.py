@@ -52,7 +52,7 @@ class FriendManager:
     def import_csv(self, account: str, app_table: str, path: str):
         with open(path, "r", encoding="utf8") as f:
             friends = csv.DictReader(f, delimiter="\t", lineterminator="\n")
-            friends = [entity.FriendInfo.from_dict(item) for item in friends]
+            friends = [entity.UserInfo.from_dict(item) for item in friends]
 
         sess = boto3.Session()
         dynamo = dynamodb.Service(account, app_table, app_table, sess, logger)

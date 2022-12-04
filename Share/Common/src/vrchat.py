@@ -33,7 +33,7 @@ class Service:
                 else:
                     raise
 
-    def get_friends(self, current_user_info, update_time: datetime) -> list[FriendInfo]:
+    def get_friends(self, current_user_info, update_time: datetime) -> list[UserInfo]:
         # 認証情報とフレンドID一覧を取得
         friend_ids: list[str] = current_user_info["friends"]
         friend_ids.sort()
@@ -50,7 +50,7 @@ class Service:
             apiRes = self._internal_get_friends(
                 friendsOffset, friends_max_length, False)
             for item in apiRes:
-                friends_map[item["id"]] = FriendInfo(
+                friends_map[item["id"]] = UserInfo(
                     item["id"], item["username"], item["displayName"], None, update_time)
             friendsOffset += len(apiRes)
 
@@ -63,7 +63,7 @@ class Service:
             apiRes = self._internal_get_friends(
                 friendsOffset, friends_max_length, True)
             for item in apiRes:
-                friends_map[item["id"]] = FriendInfo(
+                friends_map[item["id"]] = UserInfo(
                     item["id"], item["username"], item["displayName"], None, update_time)
             friendsOffset += len(apiRes)
 
@@ -72,7 +72,7 @@ class Service:
 
         # フレンド一覧 (表示名付き) を作成
         friend_infos = [
-            friends_map[user_id] or FriendInfo(user_id, None, None, None, None)
+            friends_map[user_id] or UserInfo(user_id, None, None, None, None)
             for user_id in friend_ids
         ]
         return friend_infos

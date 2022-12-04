@@ -34,7 +34,7 @@ class NotionResource:
         else:
             return None
 
-    def _inline_append(self, value: entity.FriendInfo, mark_as_removed: bool, location: str) -> dict:
+    def _inline_append(self, value: entity.UserInfo, mark_as_removed: bool, location: str) -> dict:
         res = self._client.pages.create(**{
             "parent": {
                 "type": "database_id",
@@ -73,7 +73,7 @@ class NotionResource:
         })
         return res
 
-    def _inline_update(self, value: entity.FriendInfo, mark_as_removed: bool, location: str, page_obj: dict) -> dict:
+    def _inline_update(self, value: entity.UserInfo, mark_as_removed: bool, location: str, page_obj: dict) -> dict:
         # レコードの情報を取得
         page_id = page_obj["id"]
         page_props = page_obj["properties"]

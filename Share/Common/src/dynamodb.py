@@ -115,7 +115,7 @@ class Service:
             }
         )
 
-    def get_friends(self) -> list[FriendInfo]:
+    def get_friends(self) -> list[UserInfo]:
         db_res = self._get_table.query(
             KeyConditionExpression="pk = :pk and begins_with(sk, :sk)",
             ExpressionAttributeValues={
@@ -124,7 +124,7 @@ class Service:
             }
         )
         friend_infos = [
-            FriendInfo(
+            UserInfo(
                 item["user_id"], item["user_name"], item["user_display_name"],
                 item.get("regist_date"), item["update_date"]) for item in db_res["Items"]
         ]
@@ -265,7 +265,7 @@ class Service:
                     self._logger.warning("DynamoDB 書き込みでキャパシティ超過を起因とした複数回のエラーが発生 (10秒後に再試行).")
                     time.sleep(10)
 
-    def find_first_activity(self, target: FriendInfo, max_datetime: datetime, delta: timedelta = timedelta(hours=6)) -> LogEventEnterPlayer:
+    def find_first_activity(self, target: UserInfo, max_datetime: datetime, delta: timedelta = timedelta(hours=6)) -> LogEventEnterPlayer:
         res = list()
         max_datetime = max_datetime.astimezone().astimezone(self.TZ_UTC)
         for suffix in range(self.SUFFIX_LEN):

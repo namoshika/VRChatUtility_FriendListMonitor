@@ -21,22 +21,22 @@ class TestNotionResource:
 
         val = entity.OperationInfo(
             lambda_function.entity.ActionType.ADD,
-            entity.FriendInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0),
+            entity.UserInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0),
             None
         )
         res = client.update(val, "location_01")
 
         val = entity.OperationInfo(
             lambda_function.entity.ActionType.UPDATE,
-            entity.FriendInfo("user_id_01", "user_name_02", "user_display_name_02", now_time, now_time),
-            entity.FriendInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0)
+            entity.UserInfo("user_id_01", "user_name_02", "user_display_name_02", now_time, now_time),
+            entity.UserInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0)
         )
         res = client.update(val, "location_02")
 
         val = entity.OperationInfo(
             lambda_function.entity.ActionType.REMOVE,
             None,
-            entity.FriendInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0)
+            entity.UserInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0)
         )
         res = client.update(val, "location_03")
         client._inline_delete(res["id"])
@@ -48,7 +48,7 @@ class TestNotionResource:
         NOTION_AUTH_TOKEN = os.getenv("NOTION_AUTH_TOKEN")
         NOTION_PUT_DATABASEID_FRIENDLIST = os.getenv("NOTION_PUT_DATABASEID_FRIENDLIST")
 
-        val = entity.FriendInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0)
+        val = entity.UserInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0)
         client = lambda_function.NotionResource(NOTION_PUT_DATABASEID_FRIENDLIST, NOTION_AUTH_TOKEN)
         res1 = client._inline_append(val, True, "location_01")
         assert res1 is not None
@@ -60,7 +60,7 @@ class TestNotionResource:
         assert res is not None
 
         now_time = int(datetime.now().timestamp())
-        val = entity.FriendInfo("user_id_02", "user_name_02", "user_display_name_02", now_time, now_time)
+        val = entity.UserInfo("user_id_02", "user_name_02", "user_display_name_02", now_time, now_time)
         res1 = client._inline_update(val, True, None, res1)
         assert res1 is not None
         res2 = client._inline_update(val, False, None, res2)
@@ -93,7 +93,7 @@ def test_handler_name_1():
                         "_type": "OperationInfo",
                         "action": "ADD",
                         "info_new": {
-                            "_type": "FriendInfo",
+                            "_type": "UserInfo",
                             "user_id": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
                             "user_name": "ユーザ名",
                             "user_display_name": "ユーザ表示名",
@@ -124,7 +124,7 @@ def test_handler_name_2():
                         "action": "UPDATE",
                         "info_new":
                         {
-                            "_type": "FriendInfo",
+                            "_type": "UserInfo",
                             "user_id": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
                             "user_name": "ユーザ名 (更新後)",
                             "user_display_name": "ユーザ表示名 (更新後)",
@@ -133,7 +133,7 @@ def test_handler_name_2():
                         },
                         "info_old":
                         {
-                            "_type": "FriendInfo",
+                            "_type": "UserInfo",
                             "user_id": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
                             "user_name": "ユーザ名",
                             "user_display_name": "ユーザ表示名",
@@ -164,7 +164,7 @@ def test_handler_name_3():
                         "info_new": None,
                         "info_old":
                         {
-                            "_type": "FriendInfo",
+                            "_type": "UserInfo",
                             "user_id": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
                             "user_name": "ユーザ名 (更新後)",
                             "user_display_name": "ユーザ表示名 (更新後)",
