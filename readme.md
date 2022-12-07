@@ -12,9 +12,8 @@ AWS CLI がセットアップ済み。Notion にフレンドリスト出力用�
 
 | Column              | Type   |
 | ------------------- | ------ |
-| user_name           | Key    |
+| user_id             | Key    |
 | user_name_displayed | String |
-| user_id             | String |
 | location            | String |
 | regist_date         | Date   |
 | update_date         | Date   |

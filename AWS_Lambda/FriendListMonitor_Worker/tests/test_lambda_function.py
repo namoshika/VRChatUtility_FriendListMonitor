@@ -11,9 +11,9 @@ class TestApp:
     def test_invoke(self, mocker: MockerFixture):
         import src.lambda_function
 
-        friend_1 = src.lambda_function.entity.UserInfo("user_id_1", "user_name_1", "user_display_name_1", 0, 0)
-        friend_2 = src.lambda_function.entity.UserInfo("user_id_2", "user_name_2", "user_display_name_2", 0, 0)
-        friend_3 = src.lambda_function.entity.UserInfo("user_id_3", "user_name_3", "user_display_name_3", 0, 0)
+        friend_1 = src.lambda_function.entity.UserInfo("user_id_1", "user_display_name_1", 0, 0)
+        friend_2 = src.lambda_function.entity.UserInfo("user_id_2", "user_display_name_2", 0, 0)
+        friend_3 = src.lambda_function.entity.UserInfo("user_id_3", "user_display_name_3", 0, 0)
 
         # ---------------------------
         # Define Mock: dynamodb.Service
@@ -76,15 +76,15 @@ def test_extract_change_friends():
 
     dat_old = datetime(2022, 11, 4, 12, 34, 56)
     inf_old = [
-        entity.UserInfo("user_id_1", "user_name_1", "user_display_name_1", None, dat_old),
-        entity.UserInfo("user_id_2", "user_name_2", "user_display_name_2", None, dat_old),
-        entity.UserInfo("user_id_3", "user_name_3", "user_display_name_3", None, dat_old),
+        entity.UserInfo("user_id_1", "user_display_name_1", None, dat_old),
+        entity.UserInfo("user_id_2", "user_display_name_2", None, dat_old),
+        entity.UserInfo("user_id_3", "user_display_name_3", None, dat_old),
     ]
     dat_new = datetime(2022, 11, 5, 12, 34, 56)
     inf_new = [
-        entity.UserInfo("user_id_1", "user_name_1", "user_display_name_1", None, dat_new),
-        entity.UserInfo("user_id_2", "user_name_2 (更新)", "user_display_name_2 (更新)", None, dat_new),
-        entity.UserInfo("user_id_4", "user_name_4", "user_display_name_4", None, dat_new),
+        entity.UserInfo("user_id_1", "user_display_name_1", None, dat_new),
+        entity.UserInfo("user_id_2", "user_display_name_2 (更新)", None, dat_new),
+        entity.UserInfo("user_id_4", "user_display_name_4", None, dat_new),
     ]
 
     dat_upd = datetime(2022, 11, 6, 12, 34, 56)
@@ -113,8 +113,8 @@ def test_extract_change_friends():
     # --------------------
     dat_old = datetime(2022, 11, 4, 12, 34, 56)
     inf_old = [
-        entity.UserInfo("user_id_1", "user_name_1", "user_display_name_1", None, dat_old),
-        entity.UserInfo("user_id_2", "user_name_2", "user_display_name_2", None, dat_old),
+        entity.UserInfo("user_id_1", "user_display_name_1", None, dat_old),
+        entity.UserInfo("user_id_2", "user_display_name_2", None, dat_old),
     ]
     inf_new = []
 
@@ -138,8 +138,8 @@ def test_extract_change_friends():
     dat_new = datetime(2022, 11, 5, 12, 34, 56)
     inf_old = []
     inf_new = [
-        entity.UserInfo("user_id_1", "user_name_1", "user_display_name_1", None, dat_old),
-        entity.UserInfo("user_id_2", "user_name_2", "user_display_name_2", None, dat_old),
+        entity.UserInfo("user_id_1", "user_display_name_1", None, dat_old),
+        entity.UserInfo("user_id_2", "user_display_name_2", None, dat_old),
     ]
 
     dat_upd = datetime(2022, 11, 6, 12, 34, 56)

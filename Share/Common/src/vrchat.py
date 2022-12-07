@@ -41,7 +41,7 @@ class Service:
         res = self._opener.open(req)
 
         dat = json.load(res)
-        inf = UserInfo(dat["id"], dat["username"], dat["displayName"], None, update_time)
+        inf = UserInfo(dat["id"], dat["displayName"], None, update_time)
         return inf
 
     def get_friends(self, current_user_info, update_time: datetime) -> list[UserInfo]:
@@ -60,8 +60,7 @@ class Service:
         while True:
             apiRes = self._internal_get_friends(friendsOffset, friends_max_length, False)
             for item in apiRes:
-                friends_map[item["id"]] = UserInfo(
-                    item["id"], item["username"], item["displayName"], None, update_unixtime)
+                friends_map[item["id"]] = UserInfo(item["id"], item["displayName"], None, update_unixtime)
             friendsOffset += len(apiRes)
 
             if len(apiRes) != friends_max_length:
@@ -73,8 +72,7 @@ class Service:
             apiRes = self._internal_get_friends(
                 friendsOffset, friends_max_length, True)
             for item in apiRes:
-                friends_map[item["id"]] = UserInfo(
-                    item["id"], item["username"], item["displayName"], None, update_unixtime)
+                friends_map[item["id"]] = UserInfo(item["id"], item["displayName"], None, update_unixtime)
             friendsOffset += len(apiRes)
 
             if len(apiRes) != friends_max_length:

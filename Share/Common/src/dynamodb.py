@@ -9,6 +9,7 @@ from http.cookiejar import CookieJar, MozillaCookieJar
 from boto3.dynamodb.conditions import Key, Attr
 from .entity import *
 
+
 @dataclass
 class AccountInfo:
     vrchat_user_name: str
@@ -125,8 +126,10 @@ class Service:
         )
         friend_infos = [
             UserInfo(
-                item["user_id"], item["user_name"], item["user_display_name"],
-                item.get("regist_date"), item["update_date"]) for item in db_res["Items"]
+                item["user_id"], item["user_display_name"],
+                item.get("regist_date"), item["update_date"]
+            )
+            for item in db_res["Items"]
         ]
         return friend_infos
 
@@ -140,7 +143,6 @@ class Service:
                             "pk": f"#account:{self._account_id}",
                             "sk": f"#friend:{op.info_new.user_id}",
                             "user_id": op.info_new.user_id,
-                            "user_name": op.info_new.user_name,
                             "user_display_name": op.info_new.user_display_name,
                             "regist_date": op.info_new.regist_date,
                             "update_date": op.info_new.update_date
@@ -152,7 +154,6 @@ class Service:
                             "pk": f"#account:{self._account_id}",
                             "sk": f"#friend:{op.info_new.user_id}",
                             "user_id": op.info_new.user_id,
-                            "user_name": op.info_new.user_name,
                             "user_display_name": op.info_new.user_display_name,
                             "regist_date": op.info_new.update_date,
                             "update_date": op.info_new.update_date
@@ -164,7 +165,6 @@ class Service:
                             "pk": f"#account:{self._account_id}",
                             "sk": f"#friend:{op.info_new.user_id}",
                             "user_id": op.info_new.user_id,
-                            "user_name": op.info_new.user_name,
                             "user_display_name": op.info_new.user_display_name,
                             "regist_date": op.info_old.regist_date,
                             "update_date": op.info_new.update_date

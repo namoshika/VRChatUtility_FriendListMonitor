@@ -19,24 +19,26 @@ class TestNotionResource:
         client = lambda_function.NotionResource(NOTION_PUT_DATABASEID_FRIENDLIST, NOTION_AUTH_TOKEN)
         now_time = int(datetime.now().timestamp())
 
+        val = client._client.databases.retrieve(database_id=client._database_put_id)
+
         val = entity.OperationInfo(
             lambda_function.entity.ActionType.ADD,
-            entity.UserInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0),
+            entity.UserInfo("user_id_01", "user_display_name_01", 0, 0),
             None
         )
         res = client.update(val, "location_01")
 
         val = entity.OperationInfo(
             lambda_function.entity.ActionType.UPDATE,
-            entity.UserInfo("user_id_01", "user_name_02", "user_display_name_02", now_time, now_time),
-            entity.UserInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0)
+            entity.UserInfo("user_id_01", "user_display_name_02", now_time, now_time),
+            entity.UserInfo("user_id_01", "user_display_name_01", 0, 0)
         )
         res = client.update(val, "location_02")
 
         val = entity.OperationInfo(
             lambda_function.entity.ActionType.REMOVE,
             None,
-            entity.UserInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0)
+            entity.UserInfo("user_id_01", "user_display_name_01", 0, 0)
         )
         res = client.update(val, "location_03")
         client._inline_delete(res["id"])
@@ -48,7 +50,7 @@ class TestNotionResource:
         NOTION_AUTH_TOKEN = os.getenv("NOTION_AUTH_TOKEN")
         NOTION_PUT_DATABASEID_FRIENDLIST = os.getenv("NOTION_PUT_DATABASEID_FRIENDLIST")
 
-        val = entity.UserInfo("user_id_01", "user_name_01", "user_display_name_01", 0, 0)
+        val = entity.UserInfo("user_id_01", "user_display_name_01", 0, 0)
         client = lambda_function.NotionResource(NOTION_PUT_DATABASEID_FRIENDLIST, NOTION_AUTH_TOKEN)
         res1 = client._inline_append(val, True, "location_01")
         assert res1 is not None
@@ -60,7 +62,7 @@ class TestNotionResource:
         assert res is not None
 
         now_time = int(datetime.now().timestamp())
-        val = entity.UserInfo("user_id_02", "user_name_02", "user_display_name_02", now_time, now_time)
+        val = entity.UserInfo("user_id_02", "user_display_name_02", now_time, now_time)
         res1 = client._inline_update(val, True, None, res1)
         assert res1 is not None
         res2 = client._inline_update(val, False, None, res2)
@@ -95,7 +97,6 @@ def test_handler_name_1():
                         "info_new": {
                             "_type": "UserInfo",
                             "user_id": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-                            "user_name": "ユーザ名",
                             "user_display_name": "ユーザ表示名",
                             "regist_date": 1665694831,
                             "update_date": 1665694831
@@ -126,7 +127,6 @@ def test_handler_name_2():
                         {
                             "_type": "UserInfo",
                             "user_id": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-                            "user_name": "ユーザ名 (更新後)",
                             "user_display_name": "ユーザ表示名 (更新後)",
                             "regist_date": 1661942977,
                             "update_date": 1667120431,
@@ -135,7 +135,6 @@ def test_handler_name_2():
                         {
                             "_type": "UserInfo",
                             "user_id": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-                            "user_name": "ユーザ名",
                             "user_display_name": "ユーザ表示名",
                             "regist_date": 1661942977,
                             "update_date": 1661942977,
@@ -166,7 +165,6 @@ def test_handler_name_3():
                         {
                             "_type": "UserInfo",
                             "user_id": "usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-                            "user_name": "ユーザ名 (更新後)",
                             "user_display_name": "ユーザ表示名 (更新後)",
                             "regist_date": 1661942977,
                             "update_date": 1667120431,

@@ -1,4 +1,4 @@
-user_id	user_name	user_display_name	regist_date	update_date
-usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx1	ユーザ名1	ユーザ表示名1	1661942977	1661942977
-usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx2	ユーザ名2	ユーザ表示名2	1661942977	1661942977
-usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx3	ユーザ名3	ユーザ表示名3	1661942977	1661942977
+user_id	user_display_name	regist_date	update_date
+usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx1	ユーザ表示名1	1661942977	1661942977
+usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx2	ユーザ表示名2	1661942977	1661942977
+usr_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx3	ユーザ表示名3	1661942977	1661942977

@@ -26,7 +26,7 @@ class NotionResource:
         # 更新対象のレコードを取得
         query_res = self._client.databases.query(
             database_id=self._database_put_id,
-            filter={"property": "user_id", "rich_text": {"equals": user_id}},
+            filter={"property": "user_id", "title": {"equals": user_id}},
             page_size=1
         )
         if len(query_res["results"]) > 0:
@@ -41,17 +41,13 @@ class NotionResource:
                 "database_id": self._database_put_id
             },
             "properties": {
-                "user_name": {
+                "user_id": {
                     "type": "title",
-                    "title": [{"type": "text", "text": {"content": value.user_name}}]
+                    "title": [{"type": "text", "text": {"content": value.user_id}}]
                 },
                 "user_name_displayed": {
                     "type": "rich_text",
                     "rich_text": [{"type": "text", "text": {"content": value.user_display_name}}]
-                },
-                "user_id": {
-                    "type": "rich_text",
-                    "rich_text": [{"type": "text", "text": {"content": value.user_id}}]
                 },
                 "location": {
                     "type": "rich_text",
@@ -79,18 +75,14 @@ class NotionResource:
         page_props = page_obj["properties"]
 
         # レコードの情報を更新
-        # page_props["user_name"] = {
+        # page_props["user_id"] = {
         #     "type": "title",
-        #     "title": [{"type": "text", "text": {"content": value.user_name}}]
+        #     "title": [{"type": "text", "text": {"content": value.user_id}}]
         # }
         page_props["user_name_displayed"] = {
             "type": "rich_text",
             "rich_text": [{"type": "text", "text": {"content": value.user_display_name}}]
         }
-        # page_props["user_id"] = {
-        #     "type": "rich_text",
-        #     "rich_text": [{"type": "text", "text": {"content": value.user_id}}]
-        # }
         # page_props["location"] = {
         #     "type": "rich_text",
         #     "rich_text": [{"type": "text", "text": {"content": location}}]

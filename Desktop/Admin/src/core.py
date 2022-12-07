@@ -35,11 +35,10 @@ class FriendManager:
     def export_csv(self, account: str, app_table: str, path: str):
         sess = boto3.Session()
         dynamo = dynamodb.Service(account, app_table, app_table, sess, logger)
-        friends = [["user_id", "user_name", "user_display_name", "regist_date", "update_date"]]
+        friends = [["user_id", "user_display_name", "regist_date", "update_date"]]
         friends.extend([
             [
                 item.user_id,
-                item.user_name,
                 item.user_display_name,
                 item.regist_date,
                 item.update_date

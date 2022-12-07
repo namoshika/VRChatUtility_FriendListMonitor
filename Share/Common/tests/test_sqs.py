@@ -45,7 +45,7 @@ class TestProcesserService:
         target.enqueue(
             entity.OperationInfo(
                 entity.ActionType.ADD,
-                entity.UserInfo("ユーザID", "ユーザ名", "ユーザ表示名", 0, 0),
+                entity.UserInfo("ユーザID", "ユーザ表示名", 0, 0),
                 None
             )
         )

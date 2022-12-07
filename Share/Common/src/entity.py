@@ -30,14 +30,12 @@ class VRChatLogErrorType(Enum):
 @dataclass
 class UserInfo:
     user_id: str
-    user_name: str
     user_display_name: str
     regist_date: int
     update_date: int
 
     def __eq__(self, other) -> bool:
         return self.user_id == other.user_id \
-            and self.user_name == other.user_name \
             and self.user_display_name == other.user_display_name
 
     def __lt__(self, other) -> bool:
@@ -47,7 +45,6 @@ class UserInfo:
     def from_dict(value: dict[str, str]):
         return UserInfo(
             value["user_id"],
-            value["user_name"],
             value["user_display_name"],
             value["regist_date"],
             value["update_date"]
@@ -139,7 +136,6 @@ class CustomJsonEncoder(json.JSONEncoder):
             return {
                 "_type": "UserInfo",
                 "user_id": o.user_id,
-                "user_name": o.user_name,
                 "user_display_name": o.user_display_name,
                 "regist_date": int(o.regist_date) if o.regist_date is not None else None,
                 "update_date": int(o.update_date) if o.update_date is not None else None
@@ -169,6 +165,6 @@ class CustomJsonDecoder(json.JSONDecoder):
 
         typ = o["_type"]
         if typ == "UserInfo":
-            return UserInfo(o["user_id"], o["user_name"], o["user_display_name"], o["regist_date"], o["update_date"])
+            return UserInfo(o["user_id"], o["user_display_name"], o["regist_date"], o["update_date"])
         if typ == "OperationInfo":
             return OperationInfo(self.ACTION_TYPE_DICT[o["action"]], o["info_new"], o["info_old"])
